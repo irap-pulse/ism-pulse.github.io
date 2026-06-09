@@ -390,28 +390,28 @@
   .download-panel button.big-dl:hover { background: #f0f6fc; }
   .download-panel button.big-dl .icon { font-size: 16px; }
   .download-panel .dl-hint { font-size: 12.5px; opacity: 0.92; flex: 1; min-width: 220px; line-height: 1.45; }
-  /* "Take it further" pointer panel — links out to the companion Claude Project pack */
+  /* "Take it further" pointer panel — compact single-line chip */
   .next-step-panel {
     background: #f3efff;
     border: 1px solid #c9bff0;
     border-left: 4px solid #6b4fc9;
     border-radius: var(--radius);
-    padding: 14px 18px;
+    padding: 9px 14px;
     margin-bottom: 14px;
-    font-size: 13.5px; line-height: 1.5;
+    font-size: 13px; line-height: 1.4;
     color: #2d1f55;
+    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
   }
   .next-step-panel .ns-title {
-    display: block; font-weight: 700; color: #3b2a80;
-    text-transform: uppercase; letter-spacing: 0.4px; font-size: 12.5px;
-    margin-bottom: 6px;
+    font-weight: 600; color: #3b2a80; font-size: 13px;
+    flex: 1; min-width: 200px;
   }
-  .next-step-panel .ns-body { margin: 0 0 10px 0; }
+  .next-step-panel .ns-body { display: none; }
   .next-step-panel .ns-link {
     display: inline-block; background: #6b4fc9; color: #fff;
-    padding: 8px 14px; border-radius: var(--radius);
-    font-size: 13px; font-weight: 600; text-decoration: none;
-    box-shadow: 0 1px 3px rgba(59, 42, 128, 0.18);
+    padding: 5px 12px; border-radius: var(--radius);
+    font-size: 12.5px; font-weight: 600; text-decoration: none;
+    white-space: nowrap;
   }
   .next-step-panel .ns-link:hover { background: #5a3fb5; }
 
@@ -457,20 +457,39 @@
     border: 1px solid #f0c050;
     border-left: 4px solid #e69138;
     border-radius: var(--radius);
-    padding: 10px 14px;
+    padding: 8px 14px;
     margin-bottom: 14px;
-    font-size: 13px;
+    font-size: 12.5px;
     color: #6b4c00;
+    display: flex; align-items: baseline; gap: 6px;
   }
   .reviewer-notice b { color: #4a3500; }
-  .methodology {
+  /* Collapsible about-section wrapper */
+  details.about-section {
     background: #fbfcfe;
     border: 1px solid var(--border);
     border-radius: var(--radius);
-    padding: 22px 26px;
     margin-top: 24px;
+    overflow: hidden;
   }
-  .methodology h2 { margin: 0 0 12px 0; font-size: 15px; font-weight: 600; color: var(--primary-dark); letter-spacing: 0.3px; text-transform: uppercase; }
+  details.about-section > summary {
+    padding: 13px 22px;
+    font-size: 13px; font-weight: 600; color: var(--primary-dark);
+    letter-spacing: 0.4px; text-transform: uppercase;
+    cursor: pointer; user-select: none; list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  details.about-section > summary::-webkit-details-marker { display: none; }
+  details.about-section > summary::before {
+    content: "▶"; font-size: 10px; color: var(--primary);
+    transition: transform 0.15s ease; display: inline-block;
+  }
+  details.about-section[open] > summary::before { transform: rotate(90deg); }
+  details.about-section > summary:hover { background: #f0f6fc; }
+  .methodology {
+    padding: 0 26px 22px;
+  }
+  .methodology h2 { display: none; }
   .methodology h3 { font-size: 13px; color: var(--primary-dark); margin: 18px 0 8px 0; font-weight: 600; letter-spacing: 0.3px; text-transform: uppercase; }
   .methodology p, .methodology li { font-size: 13px; line-height: 1.55; color: var(--text); }
   .methodology ol, .methodology ul { padding-left: 22px; margin: 6px 0 10px; }
@@ -605,10 +624,47 @@
     font-weight: 600;
   }
   .privacy-badge .dot { width: 8px; height: 8px; border-radius: 50%; background: #2e7d32; }
+  /* Privacy badge in the header — adapts to the dark background */
+  .header-privacy {
+    background: rgba(255,255,255,0.12);
+    color: #d4f7e0;
+    border-color: rgba(255,255,255,0.25);
+    font-weight: 500;
+  }
+  .header-privacy .dot { background: #6ee89e; }
+  /* hdr-meta wraps the description + privacy badge in a flex row */
+  .hdr-meta {
+    display: flex; flex-wrap: wrap; align-items: center;
+    gap: 10px 18px; margin-top: 6px;
+  }
+  .hdr-meta p { margin: 0; opacity: 0.9; font-size: 13px; }
   details.themes { margin-top: 14px; }
   details.themes summary { cursor: pointer; font-weight: 500; color: var(--primary-dark); padding: 6px 0; }
   details.themes ul { padding-left: 20px; margin: 8px 0; }
   details.themes li { margin-bottom: 6px; font-size: 13px; }
+  /* Bundled-files status row — auto-fetched CCM + PDF shown inline */
+  .bundled-status {
+    display: flex; flex-wrap: wrap; gap: 8px 18px;
+    margin-top: 14px; padding: 8px 12px;
+    background: #f0f6fc; border: 1px solid #d0dcea;
+    border-radius: var(--radius); font-size: 12.5px; align-items: center;
+  }
+  .bundled-item { display: inline-flex; align-items: center; gap: 5px; color: var(--text-muted); }
+  .bundled-item.ok   { color: #128a5a; font-weight: 500; }
+  .bundled-item.err  { color: #c0392b; font-weight: 500; }
+  .bundled-item .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  /* Comparison mode inside a disclosure — keep it accessible but out of the way */
+  details.mode-details { margin-top: 14px; }
+  details.mode-details > summary {
+    font-size: 12px; color: var(--text-muted); cursor: pointer;
+    user-select: none; list-style: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  details.mode-details > summary::-webkit-details-marker { display: none; }
+  details.mode-details > summary::before {
+    content: "▶"; font-size: 9px; display: inline-block; transition: transform 0.15s ease;
+  }
+  details.mode-details[open] > summary::before { transform: rotate(90deg); }
+  details.mode-details .mode-row { margin-top: 10px; }
   footer {
     margin-top: 40px; padding: 20px 24px 28px; border-top: 1px solid var(--border);
     font-size: 12px; color: var(--text-muted); line-height: 1.55;
@@ -623,12 +679,47 @@
   }
   footer .foot-row .foot-links a:hover,
   footer .foot-row .foot-links a:focus { text-decoration: underline; }
+  footer details.disclaimer-wrap > summary {
+    cursor: pointer; color: var(--text-muted); font-size: 12px;
+    font-weight: 600; padding: 4px 0; user-select: none;
+    list-style: none; display: flex; align-items: center; gap: 6px;
+  }
+  footer details.disclaimer-wrap > summary::-webkit-details-marker { display: none; }
+  footer details.disclaimer-wrap > summary::before {
+    content: "▶"; font-size: 9px; color: var(--text-muted);
+    display: inline-block; transition: transform 0.15s ease;
+  }
+  footer details.disclaimer-wrap[open] > summary::before { transform: rotate(90deg); }
   footer .disclaimer {
     background: #f3f5f9; border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 10px 14px; margin: 10px 0;
+    border-radius: var(--radius); padding: 10px 14px; margin: 8px 0 0;
   }
   footer .disclaimer b { color: var(--text); }
   footer .fineprint { font-size: 11.5px; }
+  /* Compact download hint — hidden by default, shown on hover/focus of an info icon */
+  .dl-hint-wrap { position: relative; display: inline-flex; align-items: center; }
+  .dl-hint-icon {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 18px; height: 18px; border-radius: 50%;
+    background: rgba(255,255,255,0.25); color: #fff;
+    font-size: 11px; font-weight: 700; cursor: help;
+    border: 1px solid rgba(255,255,255,0.45); flex-shrink: 0;
+  }
+  .dl-hint-icon:hover, .dl-hint-icon:focus { background: rgba(255,255,255,0.42); outline: none; }
+  .dl-hint-tip {
+    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
+    transform: translateX(-50%); width: 320px; max-width: calc(100vw - 32px);
+    background: #1a202c; color: #fff; padding: 10px 12px;
+    border-radius: 6px; font-size: 12px; line-height: 1.5;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.35); z-index: 80; white-space: normal;
+  }
+  .dl-hint-tip::after {
+    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
+    border: 5px solid transparent; border-top-color: #1a202c;
+  }
+  .dl-hint-icon:hover .dl-hint-tip,
+  .dl-hint-icon:focus .dl-hint-tip,
+  .dl-hint-icon:focus-within .dl-hint-tip { display: block; }
 </style>
 </head>
 <body>
@@ -655,20 +746,19 @@
       </span>
     </span>
   </div>
-  <div class="byline">
-    Built by <a href="https://www.linkedin.com/in/gauravvikash/" target="_blank" rel="noopener">Gaurav Vikash</a>
-    · <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache Licence 2.0</a>
-    · Free &amp; open-source
+  <div class="hdr-meta">
+    <p>Keep your SSP-A updated with the latest ISM changes from ASD.</p>
   </div>
-  <p>Upload a product's System Security Plan Annex (SSP-A) spreadsheet, the current-quarter ASD ISM Cloud Controls Matrix (CCM), and the ISM Changes PDF. The tool computes the delta between the CCM and SSP-A, and presents an interactive review dashboard with downloadable outputs.</p>
-  <p>All processing happens in the browser. Nothing is uploaded anywhere.</p>
+  <div class="hdr-meta">
+    <span class="privacy-badge header-privacy"><span class="dot" aria-hidden="true"></span>Privacy-by-design: All processing happens in your browser. Nothing leaves your machine.</span>
+  </div>
 </header>
 
 <main id="main-content" tabindex="-1">
 
-<!-- ========== STEP 1: PRODUCT DETAILS ========== -->
-<section id="step-product">
-  <h2>1. Product details</h2>
+<!-- ========== STEP 1: PRODUCT DETAILS + FILE UPLOAD ========== -->
+<section id="step-inputs">
+  <h2>1. Review details</h2>
   <div class="step-grid">
     <div>
       <label for="product-name">Product name <span class="req-mark" aria-hidden="true">*</span></label>
@@ -686,37 +776,13 @@
     </div>
   </div>
   <div style="margin-top: 12px;">
-    <label for="product-overview">Product overview (architecture, hosting, key components) — used as context for triage decisions <span class="req-mark" aria-hidden="true">*</span></label>
+    <label for="product-overview">Product overview (architecture, hosting, key components) <span class="req-mark" aria-hidden="true">*</span></label>
     <textarea id="product-overview" placeholder="e.g., Azure-hosted multi-tenant SaaS. IRAP accredited to PROTECTED. Describes hosting, identity, monitoring, endpoint protection, key services..." required aria-required="true"></textarea>
   </div>
-  <p class="req-legend"><span class="req-mark">*</span> Required. All three values must be provided to compute a delta.</p>
-</section>
 
-<!-- ========== STEP 2: FILE UPLOADS ========== -->
-<section id="step-files">
-  <h2>2. Upload inputs</h2>
-
-  <!-- Comparison mode — SSP-A vs CCM is the default (normal quarterly review).
-       CCM vs CCM lets reviewers diff two CCMs for cross-quarter trend analysis
-       or to catch up when a quarter was missed. In CCM-vs-CCM mode the baseline
-       slot accepts a CCM, the Updated SSP-A export is hidden (there's no SSP-A
-       to update), and SSP-A-only validations (Provider Responsibility column
-       etc.) are skipped. -->
-  <div class="mode-row" role="radiogroup" aria-label="Comparison mode">
-    <span class="mode-label">Comparison mode:</span>
-    <label class="mode-opt">
-      <input type="radio" name="compare-mode" value="ccm-vs-sspa" checked />
-      <span><b>SSP-A vs CCM</b> <span class="hint">— standard quarterly review; lets the tool enrich with your SSP-A's scoping and produce an Updated SSP-A.</span></span>
-    </label>
-    <label class="mode-opt">
-      <input type="radio" name="compare-mode" value="ccm-vs-ccm" />
-      <span><b>CCM vs CCM</b> <span class="hint">— cross-quarter comparison of two Cloud Controls Matrices. Useful if you missed a quarter, or for portfolio-level trend analysis. No SSP-A enrichment.</span></span>
-    </label>
-  </div>
-
-  <div class="file-row">
+  <div class="file-row" style="margin-top: 16px;">
     <label class="file-label" id="label-baseline" for="file-sspa">
-      Product SSP-A — previous-quarter baseline <span class="hint">(.xlsx, required)</span>
+      Current SSP-A <span class="hint">(.xlsx, required)</span>
     </label>
     <div class="file-input-wrap">
       <input type="file" id="file-sspa" accept=".xlsx" aria-describedby="status-sspa" />
@@ -724,26 +790,13 @@
     </div>
   </div>
 
-  <div class="file-row">
-    <label class="file-label" for="file-ccm">
-      Current-quarter Cloud Controls Matrix <span class="hint">(.xlsx, required)</span>
-    </label>
-    <div class="file-input-wrap">
-      <input type="file" id="file-ccm" accept=".xlsx" aria-describedby="status-ccm" />
-      <span class="file-status" id="status-ccm" aria-live="polite">Not loaded</span>
-    </div>
+  <!-- Bundled CCM + PDF — auto-fetched from server on load -->
+  <div class="bundled-status" id="bundled-status" aria-live="polite">
+    <span class="bundled-item" id="bundled-ccm-item"><span class="dot"></span><span id="bundled-ccm-label">CCM: loading…</span></span>
+    <span class="bundled-item" id="bundled-pdf-item"><span class="dot"></span><span id="bundled-pdf-label">Changes PDF: loading…</span></span>
   </div>
 
-  <div class="file-row">
-    <label class="file-label" for="file-changes">
-      ISM Changes PDF <span class="hint">(.pdf, required — for cross-validation and rescission rationale)</span>
-    </label>
-    <div class="file-input-wrap">
-      <input type="file" id="file-changes" accept=".pdf" aria-describedby="status-changes" />
-      <span class="file-status" id="status-changes" aria-live="polite">Not loaded</span>
-    </div>
-  </div>
-
+  <p class="req-legend"><span class="req-mark">*</span> Required.</p>
   <button class="primary" id="btn-compute">Compute delta →</button>
   <div id="compute-error" role="alert" aria-live="assertive" style="color: #c0392b; margin-top: 10px; font-size: 13px; display: none;"></div>
   <div id="compute-warning" role="alert" aria-live="polite" style="display: none; margin-top: 10px; padding: 10px 12px; border: 1px solid #c9a227; background: #fff8dc; border-radius: 6px; font-size: 13px; color: #6a4f00;">
@@ -765,20 +818,28 @@
     <button class="big-dl" id="btn-word-summary" title="Download a well-formatted Word document summary of this quarter's review."><span class="icon">📝</span> Word summary (.docx)</button>
     <button class="big-dl" id="btn-stakeholder-note" title="Generate a short plain-English note you can send to non-security stakeholders."><span class="icon">✉</span> Stakeholder note</button>
 
-    <span class="dl-hint">All outputs reflect whatever is currently on this page — triage decisions, recommended actions, owner notes. The <b>change register</b> captures the delta and reviewer decisions for audit; the <b>updated SSP-A</b> merges the new ISM into your baseline (new rows inserted in CCM order, modified rows show New/Old, rescinded rows flagged) so you have a starting point for the next cycle. The <b>Word summary</b> is a formatted executive-style report; the <b>stakeholder note</b> drafts a plain-English message for non-security recipients.</span>
+    <span class="dl-hint-wrap">
+      <span class="dl-hint-icon" tabindex="0" role="button" aria-label="About the output files">
+        i
+        <span class="dl-hint-tip">
+          All outputs reflect the current page state — triage decisions, recommended actions, owner notes.<br><br>
+          <b>Change register:</b> full delta + reviewer decisions for audit.<br>
+          <b>Updated SSP-A:</b> your baseline merged with the new ISM, ready for the next cycle.<br>
+          <b>Word summary:</b> executive-style report.<br>
+          <b>Stakeholder note:</b> plain-English draft for non-security recipients.
+        </span>
+      </span>
+    </span>
   </div>
 
   <div class="next-step-panel" id="next-step-panel">
-    <span class="ns-title">Want priority and a plan? Use the Claude Project pack.</span>
-    <p class="ns-body">
-      This tool gives you a clean, auditable delta. If you also want each change <b>prioritised</b> against your product's real posture, <b>industry context</b> from public sources (ACSC / ANAO / hyperscaler assurance letters / PSPF), and a <b>12-week burndown</b>, add the companion Claude Project pack. Same inputs, plus a short posture brief.
-    </p>
-    <a class="ns-link" href="./claude-project-pack/QUICK_START.md" target="_blank" rel="noopener">Open the Claude Project pack →</a>
-    <span style="font-size:12px; margin-left:10px; color:#4e3e94;">Requires a Claude.ai account.</span>
+    <span class="ns-title">Want priority, industry context and a 12-week burndown? Add the Claude Project pack.</span>
+    <p class="ns-body"></p>
+    <a class="ns-link" href="./claude-project-pack/QUICK_START.md" target="_blank" rel="noopener">Open →</a>
   </div>
 
   <div class="reviewer-notice">
-    <b>Reviewer responsibility:</b> "In scope" and "Triage" are pre-filled from your baseline SSP-A to save time — they are <b>suggestions only</b>. It remains the reviewer's responsibility to read each changed control, apply product and architectural judgement, and confirm or override every pre-fill before the register is circulated.
+    <b>Reviewer responsibility:</b> Pre-filled "In scope" and "Triage" values are suggestions only — confirm or override every row before circulating the register.
   </div>
 
   <div id="summary-cards-wrap"></div>
@@ -861,6 +922,8 @@
   <div id="register-empty" class="empty-state hidden">No changes match the current filters.</div>
 </section>
 
+<details class="about-section" id="about-section">
+<summary>About this tool</summary>
 <section class="methodology" id="methodology">
   <h2>About this tool</h2>
 
@@ -982,12 +1045,6 @@
     <div class="callout"><b>Reminder:</b> pre-fills exist only to save the reviewer keystrokes. They do not assess the actual change. The reviewer is responsible for reading each changed control and confirming or overriding every pre-fill before sharing the register.</div>
   </details>
 
-  <h3>Privacy</h3>
-  <p style="margin: 6px 0 0 0;">
-    <span class="privacy-badge"><span class="dot" aria-hidden="true"></span>100% client-side — nothing leaves your browser</span>
-  </p>
-  <p style="margin: 8px 0 0 0; font-size: 12.5px; color: var(--text-muted);">The SSP-A, CCM and PDF you upload are processed in-memory. All data and processing is lost when a tab is closed or reloaded. Export the Change Register, Updated SSP-A or Word summary before leaving to save your work.</p>
-
   <details class="method-details">
     <summary>Known limitations and edge cases</summary>
     <ul>
@@ -1002,7 +1059,20 @@
       <li><b>Password-protected or macro-enabled workbooks.</b> Password-protected <code>.xlsx</code>, <code>.xlsm</code> and <code>.xlsb</code> files are not supported — remove the password or convert to a plain <code>.xlsx</code> before uploading.</li>
     </ul>
   </details>
+
+  <details class="method-details">
+    <summary>Disclaimer and limitation of liability</summary>
+    <p style="font-size:13px; margin: 8px 0 4px;">This tool is provided on an <b>&ldquo;as is&rdquo;</b> and <b>&ldquo;as available&rdquo;</b> basis, without warranty of any kind. The output is a <b>decision-support aid, not professional, legal, compliance, assurance or IRAP advice</b>. You remain solely responsible for reviewing each change, confirming every pre-fill, and ensuring the final artefacts meet your organisation&rsquo;s assurance, accreditation and record-keeping obligations. To the maximum extent permitted by law, <b>in no event shall the author be liable</b> for any direct, indirect, incidental, special, consequential or punitive damages arising from your use of this tool.</p>
+  </details>
+
+  <details class="method-details">
+    <summary>Licence and attribution</summary>
+    <p class="fineprint" style="margin: 8px 0 4px;">
+      &copy; 2026 <a href="https://www.linkedin.com/in/gauravvikash/" target="_blank" rel="noopener">Gaurav Vikash</a>. Released under the <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache Licence 2.0</a> &mdash; free to use, copy, modify and redistribute provided you retain this copyright notice, the accompanying <code>NOTICE</code> file, and mark any modified files. &ldquo;ISM&rdquo;, &ldquo;Cloud Controls Matrix&rdquo;, &ldquo;Essential Eight&rdquo;, &ldquo;IRAP&rdquo; and related terms refer to work published by the Australian Signals Directorate / ACSC. This tool is an independent utility and is <b>not endorsed by, affiliated with, or sponsored by</b> ASD, ACSC or the Australian Government.
+    </p>
+  </details>
 </section>
+</details>
 
 <footer role="contentinfo">
   <div class="foot-row">
@@ -1013,16 +1083,6 @@
       <a href="https://www.cyber.gov.au" target="_blank" rel="noopener">cyber.gov.au</a>
     </span>
   </div>
-  <p>
-    Single-file, fully client-side. No data leaves your browser. Export the Change Register, Updated SSP-A or Word summary before closing the tab — inline edits are not persisted.
-  </p>
-  <div class="disclaimer" role="note" aria-label="Disclaimer">
-    <b>Disclaimer and limitation of liability.</b>
-    This tool is provided on an <b>&ldquo;as is&rdquo;</b> and <b>&ldquo;as available&rdquo;</b> basis, without warranty of any kind, express or implied, including but not limited to the warranties of merchantability, fitness for a particular purpose, accuracy, completeness, non-infringement and freedom from defects or malicious code. Reasonable efforts have been made to ensure the HTML file and supporting artefacts are free from malware, but the author makes <b>no guarantee</b> to that effect: you are responsible for scanning the files with your own tools before use and for running them inside your own trust boundary. The output of this tool (delta detection, pre-filled scoping, heuristic classifications, cross-validation flags and drafted communications) is a <b>decision-support aid, not professional, legal, compliance, assurance or IRAP advice</b>. You remain solely responsible for reviewing each change, confirming every pre-fill, and ensuring the final artefacts meet your organisation&rsquo;s assurance, accreditation and record-keeping obligations. To the maximum extent permitted by law, <b>in no event shall the author be liable</b> for any direct, indirect, incidental, special, consequential, exemplary or punitive damages, or for any loss of profit, revenue, data, goodwill, assurance status or business interruption, arising out of or in connection with your use of, reliance on, or inability to use this tool, even if advised of the possibility of such damages. Use of this tool constitutes acceptance of these terms.
-  </div>
-  <p class="fineprint">
-    &copy; 2026 <a href="https://www.linkedin.com/in/gauravvikash/" target="_blank" rel="noopener">Gaurav Vikash</a>. Released under the <a href="https://www.apache.org/licenses/LICENSE-2.0" target="_blank" rel="noopener">Apache Licence 2.0</a> &mdash; you are free to use, copy, modify and redistribute this file, provided you retain this copyright notice, the accompanying <code>NOTICE</code> file, and mark any files you have modified. The Apache Licence expressly disclaims all warranties and liability; see the accompanying <code>LICENSE</code> and <code>NOTICE</code> files for the full text and attribution requirements. &ldquo;ISM&rdquo;, &ldquo;Cloud Controls Matrix&rdquo;, &ldquo;Essential Eight&rdquo;, &ldquo;IRAP&rdquo; and related terms refer to work published by the Australian Signals Directorate / Australian Cyber Security Centre. This tool is an independent utility that reads those documents and is <b>not endorsed by, affiliated with, or sponsored by</b> ASD, ACSC or the Australian Government. Third-party libraries (<code>xlsx-js-style</code>, <code>pdf.js</code>, <code>docx.js</code>) are loaded from public CDNs under their respective open-source licences and retain their own copyright.
-  </p>
 </footer>
 
 </main>
@@ -1059,9 +1119,20 @@ if (window.pdfjsLib) {
 }
 
 // ---- State -----------------------------------------------------------------
+// CCM_URL and PDF_URL use relative paths so the same HTML works on both
+// GitHub Pages and any other host — just place the files alongside index.html.
+const CCM_URL     = './ccm-current.xlsx';
+const PDF_URL     = './ism-changes-current.pdf';
+
 const state = {
   product: { name: '', classification: '', overview: '' },
-  files:   { ccm: null, sspa: null, changes: null },
+  files:   { sspa: null },
+  bundled: {
+    ccmBuffer:     null,   // ArrayBuffer of the fetched CCM
+    changesBuffer: null,   // ArrayBuffer of the fetched PDF
+    quarterLabel:  '',     // e.g. "June 2026" — shown in the status bar
+    status:        'loading', // 'loading' | 'ready' | 'error'
+  },
   parsed:  {
     // Flat conveniences — concatenation across both kinds, used by the
     // dashboard and export helpers where the distinction doesn't matter.
@@ -1264,6 +1335,11 @@ function parseXLSX(file) {
 
 async function parsePDF(file) {
   const buf = await file.arrayBuffer();
+  return parsePDFFromBuffer(buf);
+}
+
+// Parse a PDF from an ArrayBuffer (used for bundled server-side files).
+async function parsePDFFromBuffer(buf) {
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
   let text = '';
   for (let i = 1; i <= pdf.numPages; i++) {
@@ -1272,6 +1348,11 @@ async function parsePDF(file) {
     text += content.items.map(it => it.str).join(' ') + '\n';
   }
   return normalisePdfText(text);
+}
+
+// Parse an XLSX from an ArrayBuffer (used for bundled server-side CCM).
+function parseXLSXFromBuffer(buf) {
+  return XLSX.read(new Uint8Array(buf), { type: 'array' });
 }
 
 // pdf.js text extraction often splits identifiers and joined numbers across
@@ -1867,17 +1948,63 @@ function updateStatus(id, text, cls) {
   el.className = 'file-status' + (cls ? ' ' + cls : '');
 }
 
+// ---- Bundled file fetch ---------------------------------------------------
+function updateBundledStatus(ccmOk, pdfOk, ccmMsg, pdfMsg) {
+  const ccmEl  = $('bundled-ccm-item');
+  const pdfEl  = $('bundled-pdf-item');
+  const ccmLbl = $('bundled-ccm-label');
+  const pdfLbl = $('bundled-pdf-label');
+  if (!ccmEl) return;
+  ccmEl.className = 'bundled-item' + (ccmOk === true ? ' ok' : ccmOk === false ? ' err' : '');
+  pdfEl.className = 'bundled-item' + (pdfOk === true ? ' ok' : pdfOk === false ? ' err' : '');
+  if (ccmLbl) ccmLbl.textContent = ccmMsg;
+  if (pdfLbl) pdfLbl.textContent = pdfMsg;
+}
+
+async function fetchBundledFiles() {
+  updateBundledStatus(null, null, 'CCM: loading…', 'Changes PDF: loading…');
+  try {
+    const [ccmResp, pdfResp] = await Promise.all([fetch(CCM_URL), fetch(PDF_URL)]);
+    if (!ccmResp.ok) throw new Error(`CCM: HTTP ${ccmResp.status}`);
+    if (!pdfResp.ok) throw new Error(`Changes PDF: HTTP ${pdfResp.status}`);
+    const [ccmBuf, pdfBuf] = await Promise.all([ccmResp.arrayBuffer(), pdfResp.arrayBuffer()]);
+
+    // Detect quarter label from the CCM sheet name
+    const ccmWb = parseXLSXFromBuffer(ccmBuf);
+    const sheets = findReviewSheets(ccmWb);
+    const sheetName = sheets.control || sheets.principle || '';
+    const qShort = quarterFromSheetName(sheetName);
+    const qLabel = qShort ? quarterLong(qShort) : 'current quarter';
+
+    state.bundled.ccmBuffer     = ccmBuf;
+    state.bundled.changesBuffer = pdfBuf;
+    state.bundled.quarterLabel  = qLabel;
+    state.bundled.status        = 'ready';
+    updateBundledStatus(true, true, `CCM: ${qLabel} ✓`, 'Changes PDF: loaded ✓');
+  } catch (e) {
+    state.bundled.status = 'error';
+    // Show which file failed; keep partial success visible if one loaded
+    const msg = e.message || String(e);
+    if (msg.startsWith('CCM:')) {
+      updateBundledStatus(false, null, msg, 'Changes PDF: pending');
+    } else {
+      updateBundledStatus(null, false, 'CCM: pending', msg);
+    }
+    console.warn('[ISM Pulse] Bundled file fetch failed:', e);
+  }
+  checkReady();
+}
+
 function checkReady() {
   // The Compute button is always enabled — we never hard-block the user. Any
-  // missing field (product details, CCM, SSP-A) surfaces as a warning at click
-  // time with the standard "Proceed anyway" override, so the reviewer is fully
-  // in control. We still reflect readiness visually so they can see at a
-  // glance whether they've given us enough to produce a clean run.
+  // missing field surfaces as a warning at click time with a "Proceed anyway"
+  // override, so the reviewer is fully in control.
   const btn = $('btn-compute');
   if (!btn) return;
   btn.disabled = false;
   const fullyReady =
-    state.files.ccm && state.files.sspa &&
+    state.bundled.status === 'ready' &&
+    state.files.sspa &&
     ($('product-name')?.value || '').trim() &&
     ($('product-classification')?.value || '').trim() &&
     ($('product-overview')?.value || '').trim();
@@ -2058,9 +2185,9 @@ function bindFileInput(inputId, statusId, key) {
     checkReady();
   });
 }
-bindFileInput('file-sspa',    'status-sspa',    'sspa');
-bindFileInput('file-ccm',     'status-ccm',     'ccm');
-bindFileInput('file-changes', 'status-changes', 'changes');
+bindFileInput('file-sspa', 'status-sspa', 'sspa');
+// CCM and Changes PDF are fetched automatically from the server — no user upload needed.
+fetchBundledFiles();
 
 ['product-name','product-classification','product-overview'].forEach(id => {
   $(id).addEventListener('input', (e) => {
@@ -2137,9 +2264,8 @@ $('btn-compute').addEventListener('click', async () => {
     const inCcmVsCcm = state.compareMode === 'ccm-vs-ccm';
     const baselineLabel = inCcmVsCcm ? 'previous-quarter CCM (baseline)' : 'baseline SSP-A';
     const hardErrors = validateProductDetails().map(e => e.msg);
-    if (!state.files.ccm)  hardErrors.push(`The current-quarter CCM (.xlsx) is required. Please upload it in Step 2 before computing a delta.`);
-    if (!state.files.sspa) hardErrors.push(`The ${baselineLabel} (.xlsx) is required. Please upload it in Step 2 before computing a delta.`);
-    if (!state.files.changes) hardErrors.push(`The ISM Changes PDF is required. Download the "ISM changes" companion PDF for this quarter from cyber.gov.au and upload it in Step 2 before computing a delta.`);
+    if (state.bundled.status !== 'ready') hardErrors.push('The bundled CCM and Changes PDF have not loaded yet. If this error persists, check your network connection and reload the page.');
+    if (!state.files.sspa) hardErrors.push(`The ${baselineLabel} (.xlsx) is required. Please upload it before computing a delta.`);
     if (hardErrors.length) {
       $('compute-error').innerHTML =
         '<b>Cannot compute — required inputs are missing:</b><ul style="margin: 8px 0 0 0; padding-left: 18px;">' +
@@ -2154,9 +2280,9 @@ $('btn-compute').addEventListener('click', async () => {
     // positives on legitimate but unusual files, so they surface with a
     // "Proceed anyway" button.
     const warnings = [];
-    warnings.push(...await validateXlsxFile(state.files.ccm,  'ccm'));
+    // Bundled CCM + PDF are served from the same host — skip user-facing
+    // validation for those; only validate the user-uploaded SSP-A.
     warnings.push(...await validateXlsxFile(state.files.sspa, 'sspa'));
-    warnings.push(...await validatePdfFile(state.files.changes));
     if (warnings.length && !state.overrideFileTypeCheck) {
       $('compute-warning-text').innerHTML =
         '<b>Before you compute:</b> some inputs look unusual (they may still be fine). Review the list below — you can adjust the files and try again, or click <b>Proceed anyway</b> if you know what you\'re doing.<ul style="margin: 8px 0 0 0; padding-left: 18px;">' +
@@ -2166,8 +2292,8 @@ $('btn-compute').addEventListener('click', async () => {
       return; // wait for the user to click "Proceed anyway" or replace files
     }
 
-    // Parse CCM — Controls + Principles sheets
-    const ccmWb = await parseXLSX(state.files.ccm);
+    // Parse CCM — from the bundled server-side ArrayBuffer
+    const ccmWb = parseXLSXFromBuffer(state.bundled.ccmBuffer);
     const ccmSheets = findReviewSheets(ccmWb);
     if (!ccmSheets.control && !ccmSheets.principle) {
       throw new Error('CCM: no "Controls" or "Principles" sheet found.');
@@ -2228,9 +2354,9 @@ $('btn-compute').addEventListener('click', async () => {
     state.product.classification = $('product-classification').value;
     state.product.overview       = $('product-overview').value;
 
-    // Parse Changes PDF if provided
-    if (state.files.changes) {
-      state.parsed.changesText = await parsePDF(state.files.changes);
+    // Parse Changes PDF from the bundled server-side ArrayBuffer
+    if (state.bundled.changesBuffer) {
+      state.parsed.changesText = await parsePDFFromBuffer(state.bundled.changesBuffer);
     }
 
     // Compute delta across all groups
