@@ -37,11 +37,6 @@
         integrity="sha384-/1qUCSGwTur9vjf/z9lmu/eCUYbpOTgSjmpbMQZ1/CtX2v/WcAIKqRv+U1DUCG6e"
         crossorigin="anonymous"
         referrerpolicy="no-referrer"></script>
-<!-- docx.js — client-side Word document (.docx) generation for the summary export. -->
-<script src="https://cdn.jsdelivr.net/npm/docx@8.5.0/build/index.umd.min.js"
-        integrity="sha384-TcLTgu6flPhnZ5dfHnHimsxNFjYWN0povfGgnOvgPJKbZe6IbuoC2ociiatSHl9E"
-        crossorigin="anonymous"
-        referrerpolicy="no-referrer"></script>
 <style>
   :root {
     --bg: #f7f8fa;
@@ -207,13 +202,10 @@
   /* Comparison mode picker — sits above the file slots and toggles labels
      + validation flavour based on whether the baseline is an SSP-A or a
      second CCM. */
-  .mode-row { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-start; margin-bottom: 18px; padding: 10px 12px; background: #f7fbff; border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; }
-  .mode-row .mode-label { font-weight: 600; color: var(--primary-dark); margin-right: 4px; flex: 0 0 100%; margin-bottom: 4px; }
-  .mode-row .mode-opt { display: flex; gap: 6px; align-items: flex-start; cursor: pointer; flex: 1 1 360px; }
-  .mode-row .mode-opt input { margin-top: 3px; }
-  .mode-row .mode-opt .hint { color: var(--text-muted); }
   .file-input-wrap { flex: 1; display: flex; gap: 8px; align-items: center; }
   .file-input-wrap input[type="file"] { flex: 1; font-size: 12px; padding: 4px; background: #fafbfc; border: 1px dashed var(--border-strong); border-radius: var(--radius); }
+  .drop-zone { border-radius: var(--radius); transition: background 0.15s; }
+  .drop-zone.drag-over { background: #e8f2fc; outline: 2px dashed var(--primary); outline-offset: 2px; }
   .file-status { font-size: 12px; color: var(--text-muted); white-space: nowrap; min-width: 120px; text-align: right; }
   .file-status.ok { color: #128a5a; font-weight: 500; }
   .file-status.err { color: #c0392b; font-weight: 500; }
@@ -246,9 +238,6 @@
   .card.accent-new { border-left: 4px solid #6fa8dc; }
   .card.accent-modified { border-left: 4px solid #f6b26b; }
   .card.accent-rescinded { border-left: 4px solid #c27ba0; }
-  .card.accent-action { border-left: 4px solid #cc0000; }
-  .card.accent-monitor { border-left: 4px solid #e69138; }
-  .card.accent-none { border-left: 4px solid #38761d; }
   /* Grouped stats — separate Controls / Principles blocks so reviewers can
      see at a glance how each kind broke down, without having to count cards. */
   .stats-group { margin-bottom: 18px; }
@@ -284,10 +273,10 @@
 
   /* Table */
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
-  table.register { border-collapse: collapse; width: 100%; font-size: 12.5px; table-layout: fixed; }
+  table.register { border-collapse: collapse; width: 100%; font-size: 12.5px; table-layout: auto; }
   table.register thead { background: var(--primary); color: #fff; position: sticky; top: 0; z-index: 2; }
   /* Header cells wrap on whitespace and break long single words so a long
-     column title (e.g. "Control/Function ID") never overflows into the
+     column title (e.g. "ISM ID") never overflows into the
      adjacent header cell. vertical-align:bottom keeps multi-line titles
      visually balanced against single-line ones. */
   table.register thead th { padding: 10px 8px; text-align: left; font-weight: 600; font-size: 11.5px; letter-spacing: 0.3px; border-right: 1px solid rgba(255,255,255,0.2); vertical-align: bottom; color: #fff !important; overflow-wrap: break-word; word-wrap: break-word; }
@@ -303,6 +292,8 @@
   .chip.triage-monitor { background: var(--triage-monitor); color: #7a5c00; }
   .chip.triage-none    { background: var(--triage-none); color: #2d5c1d; }
   .chip.triage-unset   { background: #eee; color: #666; }
+  .chip.chip-yes { background: #d9ead3; color: #2d5c1d; }
+  .chip.chip-no  { background: #eeeeee; color: #555; }
 
   /* Guideline group headers (F4) */
   table.register tr.guideline-header { background: #eef3f9; cursor: pointer; user-select: none; }
@@ -315,6 +306,7 @@
   .guideline-header .guideline-chips { margin-left: 12px; display: inline-flex; gap: 6px; vertical-align: middle; }
   .guideline-header .guideline-chips .chip { font-size: 10.5px; padding: 1px 7px; }
   table.register tr.kind-header td { padding: 10px 12px; background: var(--primary-dark); color: #fff; font-weight: 700; font-size: 13px; letter-spacing: 0.04em; text-transform: uppercase; border-top: 2px solid var(--primary); border-bottom: 1px solid var(--primary); }
+  table.register tr.col-subheader th { padding: 5px 8px; background: #eef3f9; color: var(--text-muted); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.4px; border-bottom: 1px solid var(--border); vertical-align: bottom; }
   table.register tr.kind-header .kind-label { display: inline-block; }
   table.register tr.kind-header .kind-count { margin-left: 12px; font-weight: 500; font-size: 11.5px; text-transform: none; letter-spacing: 0; color: #cfd8e8; }
   .group-controls { display: inline-flex; gap: 6px; margin-left: auto; }
@@ -324,31 +316,19 @@
   }
   .group-controls button:hover { background: #f0f6fc; }
 
-  .inline-select { width: 100%; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border-strong); border-radius: 4px; background: #fff; }
-  .inline-select.triage-action  { background: var(--triage-action); font-weight: 600; }
-  .inline-select.triage-monitor { background: var(--triage-monitor); font-weight: 600; }
-  .inline-select.triage-none    { background: var(--triage-none); font-weight: 600; }
-  .inline-textarea { width: 100%; min-height: 50px; padding: 4px 6px; font-size: 12px; border: 1px solid var(--border); border-radius: 4px; resize: vertical; font-family: inherit; }
-  .inline-textarea:focus { border-color: var(--primary); }
-  /* Column widths are applied via classes on <th> and <td>; table-layout: fixed
-     on the parent table means the first row (the thead) fixes the column
-     widths, and data cells inherit them. Data cells wrap on word boundaries
-     (the default) which keeps long IDs on their own line but never clips. */
-  .col-id       { width: 90px; font-weight: 600; color: var(--primary-dark); }
-  .col-change   { width: 86px; }
-  .col-topic    { width: 170px; }
-  .col-guideline{ width: 140px; font-size: 12px; color: var(--text-muted); }
-  .col-appl     { width: 100px; font-size: 11px; font-family: monospace; }
-  .col-text     { width: 280px; font-size: 12px; }
+  .col-id       { min-width: 80px; width: 80px; font-weight: 600; color: var(--primary-dark); white-space: nowrap; }
+  .col-change   { min-width: 80px; width: 80px; white-space: nowrap; }
+  .col-guideline{ min-width: 120px; width: 12%; font-size: 12px; color: var(--text-muted); }
+  .col-topic    { min-width: 120px; width: 13%; }
+  .col-appl     { min-width: 80px; width: 80px; font-size: 11px; font-family: monospace; }
+  .col-text     { min-width: 240px; width: 35%; font-size: 12px; }
   .col-text .label-inline { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-top: 4px; }
   .col-text .label-inline:first-child { margin-top: 0; }
-  .col-scoping  { width: 140px; font-size: 11.5px; }
+  .col-scoping  { min-width: 110px; width: 11%; font-size: 11.5px; }
   .col-scoping .scoping-prov { font-weight: 500; }
   .col-scoping .scoping-stat { color: var(--text-muted); }
-  .col-inscope  { width: 80px; }
-  .col-triage   { width: 110px; }
-  .col-action   { width: 260px; }
-  .col-owner    { width: 120px; }
+  .col-inscope  { min-width: 70px; width: 70px; }
+  .col-triage   { min-width: 90px; width: 90px; }
   .validation-note { font-size: 12px; color: var(--text-muted); margin-top: 6px; }
   .validation-note.ok { color: #128a5a; }
   .validation-note.warn { color: #c0392b; }
@@ -389,31 +369,7 @@
   }
   .download-panel button.big-dl:hover { background: #f0f6fc; }
   .download-panel button.big-dl .icon { font-size: 16px; }
-  .download-panel .dl-hint { font-size: 12.5px; opacity: 0.92; flex: 1; min-width: 220px; line-height: 1.45; }
-  /* "Take it further" pointer panel — compact single-line chip */
-  .next-step-panel {
-    background: #f3efff;
-    border: 1px solid #c9bff0;
-    border-left: 4px solid #6b4fc9;
-    border-radius: var(--radius);
-    padding: 9px 14px;
-    margin-bottom: 14px;
-    font-size: 13px; line-height: 1.4;
-    color: #2d1f55;
-    display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
-  }
-  .next-step-panel .ns-title {
-    font-weight: 600; color: #3b2a80; font-size: 13px;
-    flex: 1; min-width: 200px;
-  }
-  .next-step-panel .ns-body { display: none; }
-  .next-step-panel .ns-link {
-    display: inline-block; background: #6b4fc9; color: #fff;
-    padding: 5px 12px; border-radius: var(--radius);
-    font-size: 12.5px; font-weight: 600; text-decoration: none;
-    white-space: nowrap;
-  }
-  .next-step-panel .ns-link:hover { background: #5a3fb5; }
+  .dl-auto-notice { font-size: 11.5px; opacity: 0.8; flex: 1 1 100%; margin-top: 4px; }
 
   /* ----- Modal (print summary + stakeholder draft) ----------------------- */
   .modal-overlay {
@@ -452,18 +408,6 @@
     font-size: 13px; line-height: 1.5; border: 1px solid var(--border);
     border-radius: 6px; padding: 12px;
   }
-  .reviewer-notice {
-    background: #fff8e1;
-    border: 1px solid #f0c050;
-    border-left: 4px solid #e69138;
-    border-radius: var(--radius);
-    padding: 8px 14px;
-    margin-bottom: 14px;
-    font-size: 12.5px;
-    color: #6b4c00;
-    display: flex; align-items: baseline; gap: 6px;
-  }
-  .reviewer-notice b { color: #4a3500; }
   /* Collapsible about-section wrapper */
   details.about-section {
     background: #fbfcfe;
@@ -632,6 +576,12 @@
     font-weight: 500;
   }
   .header-privacy .dot { background: #6ee89e; }
+  .header-session-notice {
+    background: rgba(255,255,255,0.10);
+    color: rgba(255,255,255,0.85);
+    border-color: rgba(255,255,255,0.20);
+    font-weight: 400;
+  }
   /* hdr-meta wraps the description + privacy badge in a flex row */
   .hdr-meta {
     display: flex; flex-wrap: wrap; align-items: center;
@@ -696,30 +646,6 @@
   }
   footer .disclaimer b { color: var(--text); }
   footer .fineprint { font-size: 11.5px; }
-  /* Compact download hint — hidden by default, shown on hover/focus of an info icon */
-  .dl-hint-wrap { position: relative; display: inline-flex; align-items: center; }
-  .dl-hint-icon {
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 18px; height: 18px; border-radius: 50%;
-    background: rgba(255,255,255,0.25); color: #fff;
-    font-size: 11px; font-weight: 700; cursor: help;
-    border: 1px solid rgba(255,255,255,0.45); flex-shrink: 0;
-  }
-  .dl-hint-icon:hover, .dl-hint-icon:focus { background: rgba(255,255,255,0.42); outline: none; }
-  .dl-hint-tip {
-    display: none; position: absolute; bottom: calc(100% + 8px); left: 50%;
-    transform: translateX(-50%); width: 320px; max-width: calc(100vw - 32px);
-    background: #1a202c; color: #fff; padding: 10px 12px;
-    border-radius: 6px; font-size: 12px; line-height: 1.5;
-    box-shadow: 0 6px 18px rgba(0,0,0,0.35); z-index: 80; white-space: normal;
-  }
-  .dl-hint-tip::after {
-    content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
-    border: 5px solid transparent; border-top-color: #1a202c;
-  }
-  .dl-hint-icon:hover .dl-hint-tip,
-  .dl-hint-icon:focus .dl-hint-tip,
-  .dl-hint-icon:focus-within .dl-hint-tip { display: block; }
 </style>
 </head>
 <body>
@@ -747,10 +673,8 @@
     </span>
   </div>
   <div class="hdr-meta">
-    <p>Keep your SSP-A updated with the latest ISM changes from ASD.</p>
-  </div>
-  <div class="hdr-meta">
-    <span class="privacy-badge header-privacy"><span class="dot" aria-hidden="true"></span>Privacy-by-design: All processing happens in your browser. Nothing leaves your machine.</span>
+    <span class="privacy-badge header-privacy"><span class="dot" aria-hidden="true"></span>Your uploaded files are processed locally in your browser. They are not uploaded anywhere.</span>
+    <span class="privacy-badge header-session-notice"><span style="margin-right:4px;">⚠</span>This is not an AI/LLM tool. The browser-based tool cannot save any data. Please download your files before you close or refresh this tab.</span>
   </div>
 </header>
 
@@ -758,11 +682,15 @@
 
 <!-- ========== STEP 1: PRODUCT DETAILS + FILE UPLOAD ========== -->
 <section id="step-inputs">
-  <h2>1. Review details</h2>
+  <h2>Review details</h2>
   <div class="step-grid">
     <div>
+      <label for="org-name">Organisation name <span class="req-mark" aria-hidden="true">*</span></label>
+      <input type="text" id="org-name" placeholder="e.g. Acme Corp" required aria-required="true" autocomplete="organization" />
+    </div>
+    <div>
       <label for="product-name">Product name <span class="req-mark" aria-hidden="true">*</span></label>
-      <input type="text" id="product-name" placeholder="e.g., Example Cloud Platform" required aria-required="true" />
+      <input type="text" id="product-name" placeholder="e.g. Example Cloud Platform" required aria-required="true" />
     </div>
     <div>
       <label for="product-classification">Information Classification <span class="req-mark" aria-hidden="true">*</span></label>
@@ -776,17 +704,15 @@
     </div>
   </div>
   <div style="margin-top: 12px;">
-    <label for="product-overview">Product overview (architecture, hosting, key components) <span class="req-mark" aria-hidden="true">*</span></label>
-    <textarea id="product-overview" placeholder="e.g., Azure-hosted multi-tenant SaaS. IRAP accredited to PROTECTED. Describes hosting, identity, monitoring, endpoint protection, key services..." required aria-required="true"></textarea>
+    <label for="product-overview">Product overview <span class="hint">(architecture, hosting, key components)</span> <span class="req-mark" aria-hidden="true">*</span></label>
+    <textarea id="product-overview" placeholder="e.g. Azure-hosted multi-tenant SaaS. IRAP accredited to PROTECTED. Key components: identity, monitoring, endpoint protection…" required aria-required="true"></textarea>
   </div>
 
-  <div class="file-row" style="margin-top: 16px;">
-    <label class="file-label" id="label-baseline" for="file-sspa">
-      Current SSP-A <span class="hint">(.xlsx, required)</span>
-    </label>
-    <div class="file-input-wrap">
-      <input type="file" id="file-sspa" accept=".xlsx" aria-describedby="status-sspa" />
-      <span class="file-status" id="status-sspa" aria-live="polite">Not loaded</span>
+  <div style="margin-top: 16px;">
+    <label id="label-baseline" for="file-sspa">Current SSP-A or CCM <span class="req-mark" aria-hidden="true">*</span></label>
+    <div class="drop-zone" id="drop-zone-sspa" style="margin-top:4px; display:flex; gap:8px; align-items:center; padding:8px 10px; border:1px dashed var(--border-strong); border-radius:var(--radius); background:#fafbfc; cursor:pointer;">
+      <input type="file" id="file-sspa" accept=".xlsx" aria-describedby="status-sspa" style="flex:1; font-size:12px;" />
+      <span class="file-status" id="status-sspa" aria-live="polite">Upload or drag and drop here</span>
     </div>
   </div>
 
@@ -797,7 +723,7 @@
   </div>
 
   <p class="req-legend"><span class="req-mark">*</span> Required.</p>
-  <button class="primary" id="btn-compute">Compute delta →</button>
+  <button class="primary" id="btn-compute">Update →</button>
   <div id="compute-error" role="alert" aria-live="assertive" style="color: #c0392b; margin-top: 10px; font-size: 13px; display: none;"></div>
   <div id="compute-warning" role="alert" aria-live="polite" style="display: none; margin-top: 10px; padding: 10px 12px; border: 1px solid #c9a227; background: #fff8dc; border-radius: 6px; font-size: 13px; color: #6a4f00;">
     <div id="compute-warning-text" style="margin-bottom: 10px;"></div>
@@ -807,40 +733,18 @@
 
 <!-- ========== STEP 3: DASHBOARD ========== -->
 <section id="step-dashboard" class="hidden">
-  <h2>3. Change register</h2>
+  <h2>Change register</h2>
 
   <div class="meta-bar" id="meta-bar"></div>
 
   <div class="download-panel" id="download-panel">
-    <span class="dl-title">Download outputs</span>
-    <button class="big-dl" id="btn-export-xlsx"><span class="icon">📊</span> Change register (.xlsx)</button>
-    <button class="big-dl" id="btn-export-sspa"><span class="icon">📋</span> Updated SSP-A (.xlsx)</button>
-    <button class="big-dl" id="btn-word-summary" title="Download a well-formatted Word document summary of this quarter's review."><span class="icon">📝</span> Word summary (.docx)</button>
-    <button class="big-dl" id="btn-stakeholder-note" title="Generate a short plain-English note you can send to non-security stakeholders."><span class="icon">✉</span> Stakeholder note</button>
-
-    <span class="dl-hint-wrap">
-      <span class="dl-hint-icon" tabindex="0" role="button" aria-label="About the output files">
-        i
-        <span class="dl-hint-tip">
-          All outputs reflect the current page state — triage decisions, recommended actions, owner notes.<br><br>
-          <b>Change register:</b> full delta + reviewer decisions for audit.<br>
-          <b>Updated SSP-A:</b> your baseline merged with the new ISM, ready for the next cycle.<br>
-          <b>Word summary:</b> executive-style report.<br>
-          <b>Stakeholder note:</b> plain-English draft for non-security recipients.
-        </span>
-      </span>
-    </span>
+    <span class="dl-title">Downloads</span>
+    <button class="big-dl" id="btn-export-xlsx"><span class="icon">📊</span> Change Register (.xlsx)</button>
+    <button class="big-dl" id="btn-export-sspa"><span class="icon">📋</span> Updated Baseline (.xlsx)</button>
+    <button class="big-dl" id="btn-stakeholder-note"><span class="icon">✉</span> Stakeholder Note</button>
+    <span class="dl-auto-notice">Change Status column is the last column in the Updated Baseline file.</span>
   </div>
 
-  <div class="next-step-panel" id="next-step-panel">
-    <span class="ns-title">Want priority, industry context and a 12-week burndown? Add the Claude Project pack.</span>
-    <p class="ns-body"></p>
-    <a class="ns-link" href="./claude-project-pack/QUICK_START.md" target="_blank" rel="noopener">Open →</a>
-  </div>
-
-  <div class="reviewer-notice">
-    <b>Reviewer responsibility:</b> Pre-filled "In scope" and "Triage" values are suggestions only — confirm or override every row before circulating the register.
-  </div>
 
   <div id="summary-cards-wrap"></div>
 
@@ -849,7 +753,9 @@
     <div id="themes-content"></div>
   </details>
 
-  <div class="filter-bar" style="margin-top: 18px;" role="search" aria-label="Change-register filters">
+  <p style="margin:14px 0 8px; font-size:12.5px; color:var(--text-muted);">Browser preview of your Change Register. Use the download buttons above to save a local copy.</p>
+
+  <div class="filter-bar" style="margin-top: 0;" role="search" aria-label="Change-register filters">
     <div>
       <label for="filter-kind">Kind</label>
       <select id="filter-kind">
@@ -868,27 +774,8 @@
       </select>
     </div>
     <div>
-      <label for="filter-triage">Triage</label>
-      <select id="filter-triage">
-        <option value="">All</option>
-        <option value="Action Required">Action Required</option>
-        <option value="Monitor">Monitor</option>
-        <option value="No Action">No Action</option>
-        <option value="Unset">Unset</option>
-      </select>
-    </div>
-    <div>
-      <label for="filter-scope">In scope</label>
-      <select id="filter-scope">
-        <option value="">All</option>
-        <option value="Yes">Yes</option>
-        <option value="No">No</option>
-        <option value="Unset">Unset</option>
-      </select>
-    </div>
-    <div>
       <label for="filter-search">Search</label>
-      <input type="text" class="search" id="filter-search" placeholder="Control/Function ID, topic, text..." aria-label="Search within the change register" />
+      <input type="text" class="search" id="filter-search" placeholder="ISM ID, topic, text..." aria-label="Search within the change register" />
     </div>
     <div class="reset">
       <button class="secondary" id="btn-reset">Reset filters</button>
@@ -903,17 +790,14 @@
     <table class="register" id="register-table">
       <thead>
         <tr>
-          <th class="col-id">Control/Function ID</th>
+          <th class="col-id">ISM ID</th>
           <th class="col-change">Change</th>
           <th class="col-guideline">Guideline / Function</th>
           <th class="col-topic">Topic</th>
           <th class="col-appl">Applicability</th>
-          <th class="col-text">Old vs. new text</th>
-          <th class="col-scoping">Current SSP-A scoping</th>
-          <th class="col-inscope">In scope</th>
-          <th class="col-triage">Triage</th>
-          <th class="col-action">Recommended action</th>
-          <th class="col-owner">Owner / notes</th>
+          <th class="col-text">Old vs. new ISM requirement</th>
+          <th class="col-scoping">Baseline implementation status</th>
+          <th class="col-inscope">Applicable</th>
         </tr>
       </thead>
       <tbody id="register-body"></tbody>
@@ -929,25 +813,25 @@
 
   <details class="method-details">
     <summary>How this tool works</summary>
-    <p class="method-lead">The tool reads two spreadsheets, finds what actually changed between them, and fills in the parts of the review that can be determined mechanically — so the reviewer can focus on the judgement calls.</p>
+    <p class="method-lead">Upload your SSP-A or CCM — the tool compares it against the current-quarter CCM (pre-loaded from the server) and fills in the parts of the review that can be determined mechanically, so the reviewer can focus on the judgement calls.</p>
 
     <!-- Pipeline diagram: Inputs → Process → Outputs -->
     <div class="pipeline" role="group" aria-label="Tool pipeline: inputs, process, outputs">
       <div class="stage inputs">
         <h4>1. Inputs</h4>
         <ul>
-          <li><b>SSP-A</b> (latest available) — your baseline scoping</li>
-          <li><b>CCM</b> (this quarter) — the new ASD truth</li>
-          <li><b>Changes PDF</b> (this quarter) — for cross-validation and rescission rationale</li>
+          <li><b>Your SSP-A or CCM</b> — uploaded by you as the baseline</li>
+          <li><b>Current-quarter CCM</b> — pre-loaded automatically</li>
+          <li><b>ISM Changes PDF</b> — pre-loaded automatically</li>
         </ul>
       </div>
       <div class="arrow" aria-hidden="true">→</div>
       <div class="stage process">
         <h4>2. Process</h4>
         <ul>
-          <li><b>Detect quarters</b> from sheet names</li>
-          <li><b>Diff IDs</b> → New / Modified / Rescinded</li>
-          <li><b>Enrich</b> each row with SSP-A scoping</li>
+          <li><b>Detect quarters</b> from sheet names or column fingerprints</li>
+          <li><b>Diff IDs</b> → New / Modified / Rescinded (Modified means the requirement wording changed; applicability and E8 drift are surfaced separately)</li>
+          <li><b>Enrich</b> each row with baseline scoping</li>
           <li><b>Pre-fill</b> In-scope + Triage (rules below)</li>
         </ul>
       </div>
@@ -955,9 +839,9 @@
       <div class="stage outputs">
         <h4>3. Outputs</h4>
         <ul>
-          <li><b>Dashboard</b> — filter, search, edit inline</li>
+          <li><b>Dashboard</b> — filter and search the delta in your browser</li>
           <li><b>Change Register (.xlsx)</b> — Summary, Controls, Principles, Methodology, E8 Snapshot</li>
-          <li><b>Updated SSP-A (.xlsx)</b> — baseline with your triage applied</li>
+          <li><b>Updated Baseline (.xlsx)</b> — baseline with your triage applied</li>
           <li><b>Stakeholder note</b> + <b>share summary</b></li>
         </ul>
       </div>
@@ -966,7 +850,7 @@
 
   <details class="method-details">
     <summary>Assumptions the tool makes about the inputs</summary>
-    <p style="margin: 0 0 8px 0;">The delta and pre-fills rest on a few assumptions about how the SSP-A and the CCM are structured. If any are untrue for your product the output will still look plausible but won't be trustworthy &mdash; worth a glance before you upload.</p>
+    <p style="margin: 0 0 8px 0;">The delta and pre-fills rest on a few assumptions about how your baseline file and the CCM are structured. If any are untrue the output will still look plausible but won't be trustworthy &mdash; worth a glance before you upload.</p>
     <table class="method-table" aria-label="Assumptions the tool makes">
       <thead>
         <tr>
@@ -988,8 +872,8 @@
           <td>Applicability-only changes aren&rsquo;t flagged as Modified. The applicability-drift HINT catches them separately.</td>
         </tr>
         <tr>
-          <td>The scope of the system and ISM Guidelines has not changed materially since the last SSP-A was finalsied.</td>
-          <td>Pre-fills come straight from the baseline SSP-A. After an architectural change, pre-filled Not-Applicable decisions may be stale.</td>
+          <td>The scope of the system and ISM Guidelines has not changed materially since the last SSP-A was finalised.</td>
+          <td>Pre-fills come straight from the baseline file. After an architectural change, pre-filled Not-Applicable decisions may be stale.</td>
         </tr>
         <tr>
           <td>Essential Eight maturity lives in the CCM&rsquo;s <code>ML1</code> / <code>ML2</code> / <code>ML3</code> columns.</td>
@@ -1000,7 +884,7 @@
   </details>
 
   <details class="method-details">
-    <summary>Pre-fill rules (applied in order)</summary>
+    <summary>Pre-fill rules (applied to the downloaded Change Register)</summary>
     <table class="method-table" aria-label="Pre-fill rules">
       <thead>
         <tr>
@@ -1014,14 +898,14 @@
       <tbody>
         <tr>
           <td class="col-priority">1</td>
-          <td>Every control under a Guideline is marked <code>Not Applicable</code> in the baseline SSP-A</td>
+          <td>Every control under a Guideline is marked <code>Not Applicable</code> in the baseline file</td>
           <td><span class="pill no">No</span></td>
           <td><span class="pill no">No Action</span></td>
           <td>New and Modified</td>
         </tr>
         <tr>
           <td class="col-priority">2</td>
-          <td>This specific row is marked <code>Not Applicable</code> in the baseline SSP-A</td>
+          <td>This specific row is marked <code>Not Applicable</code> in the baseline file</td>
           <td><span class="pill no">No</span></td>
           <td><span class="pill no">No Action</span> <span class="pill na">(mod only)</span></td>
           <td>Modified and Rescinded</td>
@@ -1042,18 +926,18 @@
         </tr>
       </tbody>
     </table>
-    <div class="callout"><b>Reminder:</b> pre-fills exist only to save the reviewer keystrokes. They do not assess the actual change. The reviewer is responsible for reading each changed control and confirming or overriding every pre-fill before sharing the register.</div>
+    <div class="callout">Pre-fills are written into the downloaded Change Register (.xlsx) so reviewers can start from a structured baseline rather than a blank sheet. They are suggestions only — the reviewer must read each control and confirm or override every pre-fill before the register is shared.</div>
   </details>
 
   <details class="method-details">
     <summary>Known limitations and edge cases</summary>
     <ul>
       <li><b>Column layout assumptions.</b> The tool assumes the CCM and SSP-A use the column headers in use at the time of publication (<i>Identifier</i>, <i>Revision</i>, <i>Updated</i>, <i>Guideline</i>, <i>Topic</i>, <i>Provider Responsibility</i>, <i>Implementation Status</i>, etc.). If ASD restructures the CCM, you may need to tweak the code — spot-check a few rows the first time you use it against a new quarter's release.</li>
-      <li><b>Sheet name convention.</b> Quarter detection reads the workbook's sheet name (e.g. "Controls - March 2026"). If your SSP-A renames that sheet, the baseline quarter label will be blank.</li>
+      <li><b>Sheet name convention.</b> The tool first tries to match sheets named "Controls…" or "Principles…". If no match is found it falls back to scanning column headers for "Identifier" + "Guideline" (controls) or "Identifier" + "Function" (principles). If neither pass finds a sheet, the file will be rejected.</li>
       <li><b>Rescission + re-issue.</b> Occasionally ASD retires one ISM identifier and reintroduces the same requirement under a new identifier. The tool will flag the old ID as Rescinded and the new ID as New but will not connect them — the reviewer has to spot these pairs manually.</li>
       <li><b>Pre-fill heuristics are typical-case.</b> The guideline-level out-of-scope rule reflects how most SSP-As are structured, but unusual ones (multi-tenant, hybrid, federal-vs-state splits) may need the pre-fills overridden more often. Sanity-check at least one guideline you expect to be in scope before trusting the register.</li>
       <li><b>Essential Eight flagging.</b> The Essential 8 Maturity Level column is populated from the CCM's ML1/ML2/ML3 columns. Controls that do not map to Essential 8 are shown as "None".</li>
-      <li><b>Info and Pivot tabs are dropped.</b> If your baseline SSP-A has an <i>Info</i> / <i>Information</i> tab or a <i>Pivot</i> tab, the Updated SSP-A export drops them. Info tabs do not round-trip cleanly through the xlsx library; Pivot tabs would show <i>baseline-quarter</i> counts against the new controls. Re-create the pivot against the Updated SSP-A in Excel (<i>Insert → PivotTable</i>). Other user sheets and hidden sheets still pass through untouched.</li>
+      <li><b>Info and Pivot tabs are dropped.</b> If your baseline file has an <i>Info</i> / <i>Information</i> tab or a <i>Pivot</i> tab, the Updated baseline export drops them. Info tabs do not round-trip cleanly through the xlsx library; Pivot tabs would show <i>baseline-quarter</i> counts against the new controls. Re-create the pivot against the Updated baseline in Excel (<i>Insert → PivotTable</i>). Other user sheets and hidden sheets still pass through untouched.</li>
       <li><b>Freeze panes are not preserved.</b> The underlying library (xlsx-js-style) does not write frozen rows. Apply it manually in Excel after download (<i>View → Freeze Top Row</i>).</li>
       <li><b>Sensitivity labels (MIP / AIP) and DRM.</b> Real-world SSP-As are often protected with Microsoft Purview / Azure Information Protection labels, Microsoft Information Protection encryption, or third-party DRM. The tool can only parse an unprotected <code>.xlsx</code> — if the file is labelled or encrypted, browser <code>FileReader</code> returns ciphertext and the parse will fail with a cryptic error. <b>Before uploading</b>, open your SSP-A in Excel, remove the sensitivity label (or downgrade it to an unprotected equivalent) and save a fresh copy, then feed <i>that</i> copy to the tool. Re-apply the label on your original after the review. Because processing is entirely client-side, the unlabelled copy never leaves your machine.</li>
       <li><b>Password-protected or macro-enabled workbooks.</b> Password-protected <code>.xlsx</code>, <code>.xlsm</code> and <code>.xlsb</code> files are not supported — remove the password or convert to a plain <code>.xlsx</code> before uploading.</li>
@@ -1097,11 +981,11 @@
       <strong id="stakeholder-title">Stakeholder-communication draft</strong>
       <span class="modal-toolbar-spacer"></span>
       <button class="modal-btn" id="btn-copy-stakeholder" title="Copy the note to clipboard.">Copy</button>
-      <button class="modal-btn" id="btn-regenerate-stakeholder" title="Re-generate the note — use after you update triage / owner decisions.">Regenerate</button>
+      <button class="modal-btn" id="btn-regenerate-stakeholder" title="Re-generate the stakeholder note from the current delta.">Regenerate</button>
       <button class="modal-btn" id="btn-close-stakeholder" aria-label="Close">Close</button>
     </div>
     <div class="modal-body">
-      <p class="hint" style="margin-top:0">Draft below. Edit freely, then Copy to paste into email or chat. The text reflects whatever is currently on the dashboard — regenerate after you change triage, owner, or recommended-action decisions.</p>
+      <p class="hint" style="margin-top:0">Draft below. Edit freely, then Copy to paste into email or chat. The text reflects the dashboard.</p>
       <textarea id="stakeholder-text" aria-label="Editable stakeholder-note draft"></textarea>
     </div>
   </div>
@@ -1125,7 +1009,7 @@ const CCM_URL     = './ccm-current.xlsx';
 const PDF_URL     = './ism-changes-current.pdf';
 
 const state = {
-  product: { name: '', classification: '', overview: '' },
+  product: { organisation: '', name: '', classification: '', overview: '' },
   files:   { sspa: null },
   bundled: {
     ccmBuffer:     null,   // ArrayBuffer of the fetched CCM
@@ -1153,9 +1037,9 @@ const state = {
   collapsedGuidelines: new Set(),  // which Guideline groups are currently collapsed
   overrideFileTypeCheck: false,    // user clicked "Proceed anyway" on a swap-warning
   // Comparison mode. 'ccm-vs-sspa' (default): baseline is the product SSP-A,
-  // enrichment + Updated SSP-A export happen as normal. 'ccm-vs-ccm': baseline
+  // enrichment + Updated baseline export happen as normal. 'ccm-vs-ccm': baseline
   // is a prior-quarter CCM, SSP-A-specific validations + scoping pre-fill are
-  // skipped, and the Updated SSP-A download is hidden.
+  // skipped, and the Updated baseline download is hidden.
   compareMode: 'ccm-vs-sspa',
 };
 
@@ -1163,12 +1047,26 @@ const state = {
 const MONTH_ABBR = { january:'Jan', february:'Feb', march:'Mar', april:'Apr', may:'May', june:'Jun', july:'Jul', august:'Aug', september:'Sep', october:'Oct', november:'Nov', december:'Dec' };
 
 function quarterFromSheetName(sheetName) {
-  // "Controls - March 2026" → "Mar-26" ; "Principles - December 2025" → "Dec-25"
-  const m = /(?:Controls|Principles)\s*-\s*(\w+)\s*(\d{4})/i.exec(sheetName || '');
-  if (!m) return '';
-  const month = MONTH_ABBR[m[1].toLowerCase()] || m[1].slice(0,3);
-  const yy = m[2].slice(-2);
-  return `${month}-${yy}`;
+  const s = sheetName || '';
+  // Pass 1 — ASD standard: "Controls - March 2026", "Principles - June 2025"
+  let m = /(?:Controls|Principles)\s*-\s*(\w+)\s*(\d{4})/i.exec(s);
+  if (m) {
+    const month = MONTH_ABBR[m[1].toLowerCase()] || m[1].slice(0,3);
+    return `${month}-${m[2].slice(-2)}`;
+  }
+  // Pass 2 — full month name anywhere: "June 2024", "June-2024", "(June 2024)"
+  m = /\b(January|February|March|April|May|June|July|August|September|October|November|December)[\s\-,]*(20\d{2})\b/i.exec(s);
+  if (m) {
+    const month = MONTH_ABBR[m[1].toLowerCase()] || m[1].slice(0,3);
+    return `${month}-${m[2].slice(-2)}`;
+  }
+  // Pass 3 — abbreviated month: "Jun 2024", "Jun-2024"
+  m = /\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\-]?(20\d{2})\b/i.exec(s);
+  if (m) {
+    const abbr = m[1].charAt(0).toUpperCase() + m[1].slice(1).toLowerCase();
+    return `${abbr}-${m[2].slice(-2)}`;
+  }
+  return '';
 }
 
 function quarterLong(q) {
@@ -1184,30 +1082,112 @@ function quarterLong(q) {
 // "Controls -" / "Principles -" (followed by a quarter) appears in the name.
 function findReviewSheets(workbook) {
   const result = { control: null, principle: null };
+
+  // Pass 1 — name-based matching. Handles standard ASD naming:
+  // "Controls - June 2026", "Principles - March 2025", etc.
   workbook.SheetNames.forEach(n => {
-    // Accept "Controls", "Controls - …", "Controls (…)", "Controls 2026"; same for Principles.
     if (!result.control   && /^Controls\b/i.test(n.trim()))   result.control = n;
     if (!result.principle && /^Principles\b/i.test(n.trim())) result.principle = n;
   });
+  // Do NOT return early here — if only one kind matched by name, run content
+  // sniffing for the other kind so non-standard tab names are still found.
+  if (result.control && result.principle) return result;
+
+  // Pass 2 — content-based sniffing for any kind still missing after name matching.
+  // Skip obviously non-review sheets by name.
+  const skipRe = /^(info|information|pivot|readme|cover|contents?|summary|changelog|notes?|overview|scoping)\b/i;
+  workbook.SheetNames.forEach(n => {
+    if (skipRe.test(n.trim())) return;
+    if (n === result.control || n === result.principle) return; // already matched
+    const sheet = workbook.Sheets[n];
+    if (!sheet) return;
+    // Scan the first 8 rows for a header row containing "Identifier" (or alias)
+    const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
+    let headers = [];
+    for (let i = 0; i < Math.min(aoa.length, 8); i++) {
+      const row = (aoa[i] || []).map(c => canonicaliseHeader(c));
+      if (row.includes('Identifier')) { headers = row; break; }
+    }
+    if (!headers.length) return;
+    // Controls: have a "Guideline" column. Principles: have a "Function" column.
+    const hasGuideline = headers.includes('Guideline') || headers.includes('Section');
+    const hasFunction  = headers.includes('Function');
+    if (!result.control   && hasGuideline) result.control   = n;
+    if (!result.principle && hasFunction)  result.principle = n;
+  });
+
   return result;
 }
 
-// Back-compat shim — any legacy caller can still ask for just the Controls
-// sheet name. New code should prefer findReviewSheets().
-function findControlsSheet(workbook) {
-  return findReviewSheets(workbook).control;
+
+// Column aliases — maps organisation-specific or variant column names to the
+// canonical names the rest of the tool uses. First matching pattern wins.
+// Add new patterns here; no other code needs to change.
+const COLUMN_ALIASES = [
+  ['Identifier',            [/^identifier$/i, /^control[\s_-]*id$/i, /^ism[\s_-]*id$/i, /^id$/i]],
+  ['Description',           [/^description$/i, /^control[\s_-]*(description|text|statement|requirement)$/i,
+                              /^security[\s_-]*control$/i, /^requirement(s)?$/i, /^control$/i,
+                              /^guideline[\s_-]*text$/i, /^detail(s)?$/i]],
+  ['Guideline',             [/^guideline(s)?$/i, /^guideline[\s_-]*group$/i, /^category$/i]],
+  ['Topic',                 [/^topic$/i, /^subject$/i, /^control[\s_-]*topic$/i]],
+  ['Revision',              [/^revision$/i, /^rev(ision)?[\s_-]*no(\.)?$/i, /^version$/i, /^rev$/i]],
+  ['Updated',               [/^updated?$/i, /^last[\s_-]*updated?$/i, /^quarter$/i, /^effective[\s_-]*date$/i]],
+  ['Implementation Status', [/^implementation[\s_-]*status$/i, /^impl\.?[\s_-]*status$/i,
+                              /^compliance[\s_-]*status$/i, /^assessment[\s_-]*status$/i]],
+  ['Provider Responsibility',[/^provider[\s_-]*responsibility$/i, /^provider[\s_-]*resp\.?$/i,
+                              /^responsibility$/i, /^applicability[\s_-]*scope$/i]],
+  ['Function',              [/^function$/i, /^cyber[\s_-]*function$/i, /^principle[\s_-]*function$/i]],
+  ['Section',               [/^section$/i, /^sub[\s_-]*guideline$/i]],
+  // 'All' was used in older ASD CCM versions instead of 'NC' (not classified).
+  // Aliasing it here means older files and newer files produce identical
+  // applicability tokens, eliminating false-positive drift warnings.
+  ['NC',                    [/^nc$/i, /^all$/i, /^not[\s_-]*classified$/i]],
+];
+
+function canonicaliseHeader(raw) {
+  if (raw == null) return '';
+  let h = String(raw).replace(/\s+/g, ' ').trim();
+
+  // Safety: truncate pathologically long headers (guards against malformed input).
+  if (h.length > 256) h = h.slice(0, 256);
+
+  // Reject strings that look like HTML/script injection — return raw so they
+  // never silently match a canonical name and corrupt the delta.
+  if (/<[a-z\/!]/i.test(h) || /javascript:/i.test(h)) return h;
+
+  // Strip trailing org-specific qualifiers before matching, e.g.:
+  //   "Implementation Status (Acme Corp)"  → "Implementation Status"
+  //   "Guideline [Draft]"                          → "Guideline"
+  //   "Description - FY2026"                       → "Description"
+  // The strip is applied only for the alias lookup; the original `h` is returned
+  // as the key when no alias matches, preserving the real column name.
+  const stripped = h
+    .replace(/\s*[\(\[][^\)\]]{1,100}[\)\]]\s*$/, '') // trailing (...) or [...]
+    .replace(/\s*[-–—]\s*[A-Za-z0-9][A-Za-z0-9\s]{0,60}$/, '') // trailing " - Label"
+    .trim();
+
+  for (const [canonical, patterns] of COLUMN_ALIASES) {
+    if (patterns.some(p => p.test(stripped) || p.test(h))) return canonical;
+  }
+  return h;
 }
 
 function normaliseRows(sheet) {
   // Real-world CCM/SSP-A sheets sometimes put the headers on row 0, sometimes
   // under a merged "ISM Controls" banner on row 1, and very occasionally on
-  // row 2. Scan the first few rows for one containing "Identifier".
+  // row 2. Scan the first few rows for one containing "Identifier" (or an alias).
   const aoa = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null });
   let hdrRow = 0;
-  for (let i = 0; i < Math.min(aoa.length, 5); i++) {
-    if ((aoa[i] || []).some(c => /^\s*identifier\s*$/i.test(String(c || '')))) { hdrRow = i; break; }
+  for (let i = 0; i < Math.min(aoa.length, 8); i++) {
+    const row = aoa[i] || [];
+    const hasId = row.some(c => {
+      const h = String(c == null ? '' : c).replace(/\s+/g, ' ').trim();
+      return canonicaliseHeader(h) === 'Identifier';
+    });
+    if (hasId) { hdrRow = i; break; }
   }
-  const headers = (aoa[hdrRow] || []).map(h => String(h == null ? '' : h).replace(/\s+/g, ' ').trim());
+  // Apply canonical aliases so all downstream code sees consistent column names.
+  const headers = (aoa[hdrRow] || []).map(h => canonicaliseHeader(h));
   const rows = [];
   for (let i = hdrRow + 1; i < aoa.length; i++) {
     const src = aoa[i] || [];
@@ -1333,11 +1313,6 @@ function parseXLSX(file) {
   });
 }
 
-async function parsePDF(file) {
-  const buf = await file.arrayBuffer();
-  return parsePDFFromBuffer(buf);
-}
-
 // Parse a PDF from an ArrayBuffer (used for bundled server-side files).
 async function parsePDFFromBuffer(buf) {
   const pdf = await pdfjsLib.getDocument({ data: buf }).promise;
@@ -1394,16 +1369,15 @@ function normalisePdfText(s) {
 
 function extractIsmIdsFromText(text) {
   const ids = new Set();
-  // ASD/ACSC publications refer to controls in several shapes across documents:
-  //   "ISM-0123"   — change register / cross-reference tables (hyphenated)
-  //   "ISM 0123"   — running prose in the Changes PDF
-  //   "ISM-01234"  — newer 5-digit identifiers
-  // We want all of them treated as the same logical identifier "ISM-####".
-  // Anything else (bare 4-digit numbers like "2026" in a date) is too noisy
-  // to include here — PDF-validation uses a separate heuristic for those.
-  const re = /ISM[- ]?(\d{3,5})/gi;
+  // Matches both ISM controls (ISM-0123, ISM 0123) and principle IDs
+  // (GOV-01, IDE-03, PRO-02, DET-01, RES-04, REC-01, IDN-xx, IDF-xx).
+  // Principle prefixes are 2–3 uppercase letters followed by a 1–3 digit number.
+  const re = /\b(?:ISM[- ]?(\d{3,5})|(GOV|IDE|IDN|IDF|PRO|DET|RES|REC)[- ]?(\d{1,3}))\b/gi;
   let m;
-  while ((m = re.exec(text)) !== null) ids.add('ISM-' + m[1]);
+  while ((m = re.exec(text)) !== null) {
+    if (m[1]) ids.add('ISM-' + m[1]);                         // ISM control
+    else      ids.add(m[2].toUpperCase() + '-' + m[3].padStart(2, '0'));  // Principle
+  }
   return ids;
 }
 
@@ -1689,37 +1663,6 @@ function extractSentenceContaining(pdfText, pos) {
 // 0..N where higher means "very likely an ISM Changes doc". Used by the
 // PDF validator alongside the ISM-#### identifier count so legitimately
 // formatted ISM documents that don't use the "ISM-" prefix aren't rejected.
-function ismPdfSignalScore(text) {
-  if (!text) return { score: 0, hits: [] };
-  const t = text.toLowerCase();
-  const phrases = [
-    /information security manual/,
-    /australian signals directorate/,
-    /\bacsc\b/,
-    /australian cyber security centre/,
-    /cyber security centre/,
-    /essential eight|essential 8/,
-    /ism principles?/,
-    /ism controls?/,
-    /\bprotected\b.*\bofficial\b|official.*protected/,   // classification vocabulary
-    /guidelines for/,                                    // ISM chapter prefix
-    /cloud computing security/,                          // common ISM section
-    /system security plan/,                              // SSP reference
-  ];
-  const hits = [];
-  phrases.forEach((re, i) => { if (re.test(t)) hits.push(i); });
-  // Bare "Control: 1234" / "Principle: 1234" style is another strong signal
-  // used in ISM changelogs that don't use the "ISM-" prefix.
-  if (/\b(control|principle)\s*[:\-]?\s*\d{3,5}\b/i.test(text)) hits.push(-1);
-  // Four-digit-looking control identifiers anywhere in the doc (e.g. a
-  // change-table row like "0123 | Updated | ..."). We need to see several of
-  // these to treat them as signal, otherwise common tokens (year numbers,
-  // section numbers) will match.
-  const fourDigit = (text.match(/\b0\d{3}\b/g) || []).length; // ISM ids often start with 0
-  if (fourDigit >= 5) hits.push(-2);
-  return { score: hits.length, hits };
-}
-
 // Compute a combined delta across one or more review groups (Controls,
 // Principles). Each group is { kind, ccmRows, sspaRows }. Output entries carry
 // a `kind` tag so dashboard / exports can split them back out.
@@ -1764,12 +1707,12 @@ function computeDelta(groups, opts) {
         mlLevels: mlLevels(r),
         mlLevelsVerbose: mlLevelsVerbose(r),
         classCoverage: controlCoversClassification(r, systemClass),
-        oldText: oldRow ? String(oldRow['Description'] || '') : '(did not exist in baseline SSP-A)',
+        oldText: oldRow ? String(oldRow['Description'] || '') : '(not in baseline file)',
         newText: String(r['Description'] || ''),
         scoping: oldRow ? {
           prov: oldRow['Provider Responsibility'] || '',
           status: oldRow['Implementation Status'] || '',
-        } : { prov: '(not yet in SSP-A)', status: '(not yet in SSP-A)' },
+        } : { prov: '', status: '' },
       });
     });
 
@@ -1883,7 +1826,7 @@ function findPossibleRescissionPairs(delta) {
   return { items, count: items.length };
 }
 
-// Applicability drift — a soft-signal check comparing the baseline SSP-A's
+// Applicability drift — a soft-signal check comparing the baseline file's
 // applicability tokens for each control against the current-quarter CCM's.
 // A mismatch doesn't necessarily mean anything is broken (ASD occasionally
 // narrows or widens classification coverage), but it means the SSP-A probably
@@ -1899,14 +1842,26 @@ function findPossibleRescissionPairs(delta) {
 //   - Skip in ccm-vs-ccm mode (neither side is an SSP-A, so "drift" doesn't
 //     have the same SSP-A-is-stale meaning).
 //
-// Returns { items: [{ id, kind, sspa, ccm }], count } or null if skipped.
+// Known ASD classification column renames across CCM releases.
+// If the ONLY difference between baseline and current CCM applicability is
+// a token rename (e.g. "All" → "NC"), it's a schema migration, not real drift.
+const APPL_TOKEN_RENAMES = { 'all': 'nc', 'not classified': 'nc' };
+
+function applyKnownRenames(tokenSet) {
+  const out = new Set();
+  tokenSet.forEach(t => out.add(APPL_TOKEN_RENAMES[t.toLowerCase()] || t));
+  return out;
+}
+
+// Returns { items: [{ id, kind, sspa, ccm }], count,
+//           schemaMigrations: [{ id, kind, sspa, ccm }], migrationCount } or null if skipped.
 function computeApplicabilityDrift(groups, opts) {
   opts = opts || {};
   if (opts.compareMode === 'ccm-vs-ccm') return null;
   const items = [];
+  const schemaMigrations = [];
   groups.forEach(({ kind, ccmRows, sspaRows }) => {
     if (!ccmRows || !sspaRows) return;
-    // Principles don't carry classification applicability columns — skip.
     if (kind !== 'control') return;
     const sspaById = {};
     sspaRows.forEach(r => {
@@ -1920,23 +1875,24 @@ function computeApplicabilityDrift(groups, opts) {
       if (!sspaRow) return;
       const ccmTokens  = applicabilityTokens(ccmRow);
       const sspaTokens = applicabilityTokens(sspaRow);
-      // Ignore if either side is empty — no signal.
       if (!ccmTokens.size || !sspaTokens.size) return;
-      // Compare as sorted lists of normalised tokens. Ignore short-code
-      // duplicates (we add both the label and code on 'Yes' rows, so equal
-      // sets shouldn't diverge on code alone).
       const a = [...ccmTokens].sort().join('|');
       const b = [...sspaTokens].sort().join('|');
       if (a === b) return;
-      items.push({
-        id, kind,
-        ccm:  [...ccmTokens].sort().join(', '),
-        sspa: [...sspaTokens].sort().join(', '),
-      });
+      // Check if the difference is entirely explained by known renames.
+      const mappedSspa = applyKnownRenames(sspaTokens);
+      const aMapped = [...mappedSspa].sort().join('|');
+      const entry = { id, kind, ccm: [...ccmTokens].sort().join(', '), sspa: [...sspaTokens].sort().join(', ') };
+      if (aMapped === a) {
+        schemaMigrations.push(entry); // rename-only, not real drift
+      } else {
+        items.push(entry);
+      }
     });
   });
   items.sort((x, y) => x.id.localeCompare(y.id));
-  return { items, count: items.length };
+  schemaMigrations.sort((x, y) => x.id.localeCompare(y.id));
+  return { items, count: items.length, schemaMigrations, migrationCount: schemaMigrations.length };
 }
 
 // ---- UI wiring -------------------------------------------------------------
@@ -1963,35 +1919,44 @@ function updateBundledStatus(ccmOk, pdfOk, ccmMsg, pdfMsg) {
 
 async function fetchBundledFiles() {
   updateBundledStatus(null, null, 'CCM: loading…', 'Changes PDF: loading…');
-  try {
-    const [ccmResp, pdfResp] = await Promise.all([fetch(CCM_URL), fetch(PDF_URL)]);
-    if (!ccmResp.ok) throw new Error(`CCM: HTTP ${ccmResp.status}`);
-    if (!pdfResp.ok) throw new Error(`Changes PDF: HTTP ${pdfResp.status}`);
-    const [ccmBuf, pdfBuf] = await Promise.all([ccmResp.arrayBuffer(), pdfResp.arrayBuffer()]);
 
-    // Detect quarter label from the CCM sheet name
-    const ccmWb = parseXLSXFromBuffer(ccmBuf);
-    const sheets = findReviewSheets(ccmWb);
-    const sheetName = sheets.control || sheets.principle || '';
-    const qShort = quarterFromSheetName(sheetName);
-    const qLabel = qShort ? quarterLong(qShort) : 'current quarter';
+  const [ccmResult, pdfResult] = await Promise.allSettled([
+    fetch(CCM_URL).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); }),
+    fetch(PDF_URL).then(r => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.arrayBuffer(); }),
+  ]);
 
-    state.bundled.ccmBuffer     = ccmBuf;
-    state.bundled.changesBuffer = pdfBuf;
-    state.bundled.quarterLabel  = qLabel;
-    state.bundled.status        = 'ready';
-    updateBundledStatus(true, true, `CCM: ${qLabel} ✓`, 'Changes PDF: loaded ✓');
-  } catch (e) {
+  // CCM is mandatory — without it we cannot compute the delta.
+  if (ccmResult.status === 'rejected') {
     state.bundled.status = 'error';
-    // Show which file failed; keep partial success visible if one loaded
-    const msg = e.message || String(e);
-    if (msg.startsWith('CCM:')) {
-      updateBundledStatus(false, null, msg, 'Changes PDF: pending');
-    } else {
-      updateBundledStatus(null, false, 'CCM: pending', msg);
-    }
-    console.warn('[ISM Pulse] Bundled file fetch failed:', e);
+    updateBundledStatus(false, null, `CCM: failed — ${ccmResult.reason?.message || ccmResult.reason}`, 'Changes PDF: skipped');
+    console.warn('[ISM Pulse] CCM fetch failed:', ccmResult.reason);
+    checkReady();
+    return;
   }
+
+  // PDF is optional — only needed for rescission reasons.
+  const ccmBuf = ccmResult.value;
+  const pdfBuf = pdfResult.status === 'fulfilled' ? pdfResult.value : null;
+
+  // Detect quarter label from the CCM sheet name.
+  const ccmWb = parseXLSXFromBuffer(ccmBuf);
+  const sheets = findReviewSheets(ccmWb);
+  const sheetName = sheets.control || sheets.principle || '';
+  const qShort = quarterFromSheetName(sheetName);
+  const qLabel = qShort ? quarterLong(qShort) : 'current quarter';
+
+  state.bundled.ccmBuffer     = ccmBuf;
+  state.bundled.changesBuffer = pdfBuf;
+  state.bundled.quarterLabel  = qLabel;
+  state.bundled.status        = 'ready';
+
+  const pdfStatusText = pdfBuf
+    ? 'Changes PDF: loaded ✓'
+    : `Changes PDF: unavailable — rescission reasons will not be shown`;
+  updateBundledStatus(true, !!pdfBuf, `CCM: ${qLabel} ✓`, pdfStatusText);
+
+  if (!pdfBuf) console.warn('[ISM Pulse] Changes PDF fetch failed:', pdfResult.reason);
+
   checkReady();
 }
 
@@ -2005,6 +1970,7 @@ function checkReady() {
   const fullyReady =
     state.bundled.status === 'ready' &&
     state.files.sspa &&
+    ($('org-name')?.value || '').trim() &&
     ($('product-name')?.value || '').trim() &&
     ($('product-classification')?.value || '').trim() &&
     ($('product-overview')?.value || '').trim();
@@ -2020,7 +1986,6 @@ function checkReady() {
 // None of these are security-critical (the tool runs client-side), they just
 // keep the error surface predictable.
 const MAX_XLSX_BYTES = 50 * 1024 * 1024;   // 50 MB
-const MAX_PDF_BYTES  = 50 * 1024 * 1024;
 
 // Hard checks (size, extension, magic bytes, parseability, mandatory columns)
 // throw errors — these genuinely cannot be analysed.
@@ -2035,13 +2000,7 @@ const MAX_PDF_BYTES  = 50 * 1024 * 1024;
 // user uploaded it into, so the user can see at a glance WHICH file is at
 // issue and WHERE it lives on the page.
 async function validateXlsxFile(file, kind) {
-  // kind is 'ccm' | 'sspa' — used in error messages and content checks.
-  // In ccm-vs-ccm mode the "sspa" slot actually holds a baseline CCM, so we
-  // label it accordingly and skip the SSP-A-only column-fingerprint checks.
-  const inCcmVsCcm = state.compareMode === 'ccm-vs-ccm';
-  const slot  = kind === 'ccm'
-    ? 'current-quarter CCM'
-    : (inCcmVsCcm ? 'previous-quarter CCM (baseline)' : 'baseline SSP-A');
+  const slot  = kind === 'ccm' ? 'current-quarter CCM' : 'SSP-A or CCM (baseline)';
   const label = (f) => `"${f.name}" (uploaded as the ${slot})`;
   const warnings = [];
 
@@ -2054,8 +2013,8 @@ async function validateXlsxFile(file, kind) {
   if (file.size > MAX_XLSX_BYTES) {
     throw new Error(`${label(file)} is too large (${(file.size / 1048576).toFixed(1)} MB). Maximum accepted size is 50 MB.`);
   }
-  if (!/\.(xlsx|xlsm)$/i.test(file.name)) {
-    throw new Error(`${label(file)} is not an Excel workbook (.xlsx / .xlsm). The ${slot} must be an Excel file.`);
+  if (!/\.xlsx$/i.test(file.name)) {
+    throw new Error(`${label(file)} is not a plain Excel workbook (.xlsx). Convert the file to .xlsx before uploading.`);
   }
 
   // xlsx files are ZIP containers, starting with "PK\x03\x04".
@@ -2071,7 +2030,7 @@ async function validateXlsxFile(file, kind) {
   catch (e) { throw new Error(`${label(file)} could not be read: ${e.message}`); }
   const sheets = findReviewSheets(wb);
   if (!sheets.control && !sheets.principle) {
-    throw new Error(`${label(file)} has no Controls or Principles sheet — it does not look like a ${kind === 'ccm' ? 'CCM' : 'SSP-A'}.`);
+    throw new Error(`${label(file)} has no recognisable Controls or Principles sheet. Expected either a sheet starting with "Controls" / "Principles", or any sheet containing an "Identifier" column with a "Guideline" (controls) or "Function" (principles) column.`);
   }
 
   const probeSheet = wb.Sheets[sheets.control || sheets.principle];
@@ -2084,21 +2043,15 @@ async function validateXlsxFile(file, kind) {
   const hasProvider    = cols.has('provider responsibility');
   const hasImpl        = cols.has('implementation status');
 
-  if (!hasIdentifier)  throw new Error(`${label(file)} is missing the required "Identifier" column.`);
-  if (!hasDescription) throw new Error(`${label(file)} is missing the required "Description" column.`);
+  if (!hasIdentifier)  throw new Error(`${label(file)} has no recognisable "Identifier" column. Expected a column named "Identifier", "Control ID", "ISM ID" or similar.`);
+  if (!hasDescription) throw new Error(`${label(file)} has no recognisable description column. Expected a column named "Description", "Control", "Security Control", "Requirement" or similar. Check the column headers in your file.`);
 
-  // Soft swap-detection — may produce false positives when organisations keep
-  // identical column sets across CCM and SSP-A. Surface as a warning, not a
-  // hard error; the user can click "Proceed anyway" to override. Skipped
-  // entirely in ccm-vs-ccm mode: neither file is an SSP-A, so the absence of
-  // SSP-A columns is expected, not suspicious.
-  if (!inCcmVsCcm) {
-    if (kind === 'sspa' && !hasProvider && !hasImpl) {
-      warnings.push(`${label(file)} has no "Provider Responsibility" / "Implementation Status" columns — those are the columns typically found on an SSP-A. This might mean you uploaded the CCM into the SSP-A slot, or it might just mean your organisation's SSP-A uses a different column layout.`);
-    }
-    if (kind === 'ccm' && hasProvider && hasImpl) {
-      warnings.push(`${label(file)} has "Provider Responsibility" / "Implementation Status" columns — those are typically SSP-A-only. This might mean you swapped the CCM and SSP-A uploads, or it might just mean your organisation's CCM includes those columns.`);
-    }
+  // Soft swap-detection — heuristic, overridable via "Proceed anyway".
+  if (kind === 'sspa' && !hasProvider && !hasImpl) {
+    warnings.push(`${label(file)} has no "Provider Responsibility" / "Implementation Status" columns — those are typically found in an SSP-A. This may be fine if you're uploading a raw CCM as your baseline.`);
+  }
+  if (kind === 'ccm' && hasProvider && hasImpl) {
+    warnings.push(`${label(file)} has "Provider Responsibility" / "Implementation Status" columns — these are typically found in an SSP-A rather than a raw CCM. If you intended to upload a CCM as baseline this may still be correct.`);
   }
   return warnings;
 }
@@ -2112,58 +2065,15 @@ async function validateXlsxFile(file, kind) {
 // PDF signal score) live elsewhere and remain overridable.
 function validateProductDetails() {
   const errors = [];
+  const org            = ($('org-name') && $('org-name').value || '').trim();
   const name           = ($('product-name') && $('product-name').value || '').trim();
   const classification = ($('product-classification') && $('product-classification').value || '').trim();
   const overview       = ($('product-overview') && $('product-overview').value || '').trim();
-  if (!name) {
-    errors.push({ field: 'product-name', msg: 'Product name is required. It labels the Summary sheet, the exported filenames, and the reviewer header, and is part of the audit trail.' });
-  }
-  if (!classification) {
-    errors.push({ field: 'product-classification', msg: 'Information Classification is required. It drives the classification-based out-of-scope pre-fill (controls that only apply to higher classifications auto-flag as "In scope = No").' });
-  }
-  if (!overview) {
-    errors.push({ field: 'product-overview', msg: 'Product overview is required. It is the architecture-context paragraph reviewers use to judge whether each change applies to the product.' });
-  }
+  if (!org)            errors.push({ field: 'org-name',              msg: 'Organisation name is required.' });
+  if (!name)           errors.push({ field: 'product-name',          msg: 'Product name is required.' });
+  if (!classification) errors.push({ field: 'product-classification', msg: 'Information Classification is required.' });
+  if (!overview)       errors.push({ field: 'product-overview',       msg: 'Product overview is required.' });
   return errors;
-}
-
-// PDF hard checks (size, extension, magic bytes, parseability) throw; the
-// content-heuristic check (too-few ISM-#### identifiers) returns a warning
-// for the same reason the xlsx swap check does — it's a heuristic, not a
-// truth. All messages identify the file + the PDF slot explicitly.
-async function validatePdfFile(file) {
-  // Missing-file check is enforced at the hard-error gate in the caller;
-  // by the time we get here, `file` is expected to be present.
-  if (!file) return [];
-  const label = `"${file.name}" (uploaded as the ISM Changes PDF)`;
-  const warnings = [];
-
-  if (file.size > MAX_PDF_BYTES) {
-    throw new Error(`${label} is too large (${(file.size / 1048576).toFixed(1)} MB). Maximum accepted PDF size is 50 MB.`);
-  }
-  if (!/\.pdf$/i.test(file.name)) {
-    throw new Error(`${label} is not a PDF (.pdf). The Changes PDF slot only accepts PDF files.`);
-  }
-  const head = new Uint8Array(await file.slice(0, 5).arrayBuffer());
-  // PDF magic: "%PDF-"
-  if (!(head[0] === 0x25 && head[1] === 0x50 && head[2] === 0x44 && head[3] === 0x46 && head[4] === 0x2D)) {
-    throw new Error(`${label} does not look like a real PDF — its file signature is wrong.`);
-  }
-  // Content sanity: expect multiple ISM-#### identifiers.
-  let text = '';
-  try { text = await parsePDF(file); }
-  catch (e) { throw new Error(`${label} could not be read as a PDF: ${e.message}`); }
-  // Multi-signal heuristic: accept the Changes PDF if either several ISM
-  // identifiers are present or we see strong ASD/ACSC/ISM brand language.
-  // This tolerates identifier formatting variants ("ISM-0123", "ISM 0123",
-  // or bare "0123" inside change tables).
-  const ids = extractIsmIdsFromText(text);
-  const sig = ismPdfSignalScore(text);
-  const looksLikeIsm = ids.size >= 3 || sig.score >= 3 || (ids.size >= 1 && sig.score >= 2);
-  if (!looksLikeIsm) {
-    warnings.push(`${label} may not be an ISM Changes document — found ${ids.size} ISM identifier(s) and ${sig.score} ISM/ASD keyword match(es) in its text. Expected the quarterly ISM Changes companion published by ASD / ACSC. If this is the right file, click "Proceed anyway".`);
-  }
-  return warnings;
 }
 
 function bindFileInput(inputId, statusId, key) {
@@ -2186,10 +2096,31 @@ function bindFileInput(inputId, statusId, key) {
   });
 }
 bindFileInput('file-sspa', 'status-sspa', 'sspa');
+
+// Drag-and-drop for the SSP-A/CCM slot
+(function() {
+  const zone = $('drop-zone-sspa');
+  const input = $('file-sspa');
+  if (!zone || !input) return;
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    const file = e.dataTransfer.files[0];
+    if (!file) return;
+    // Programmatically assign to the file input so bindFileInput's handler fires
+    const dt = new DataTransfer();
+    dt.items.add(file);
+    input.files = dt.files;
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+})();
+
 // CCM and Changes PDF are fetched automatically from the server — no user upload needed.
 fetchBundledFiles();
 
-['product-name','product-classification','product-overview'].forEach(id => {
+['org-name','product-name','product-classification','product-overview'].forEach(id => {
   $(id).addEventListener('input', (e) => {
     const key = id.replace('product-','');
     const mapKey = key === 'classification' ? 'classification' : (key === 'name' ? 'name' : 'overview');
@@ -2206,37 +2137,14 @@ checkReady();
 // ---- Comparison mode (ccm-vs-sspa | ccm-vs-ccm) ---------------------------
 // The tool supports two comparison modes:
 //   ccm-vs-sspa — original behaviour: the baseline is the product's SSP-A,
-//                 so we can enrich with scoping and emit an Updated SSP-A.
+//                 so we can enrich with scoping and emit an Updated baseline.
 //   ccm-vs-ccm  — the baseline is a prior-quarter CCM. This is useful for
 //                 cross-quarter trend analysis, or for catching up when a
 //                 quarter's review was skipped. No scoping available, so we
-//                 hide the Updated SSP-A download and skip SSP-A-specific
+//                 hide the Updated baseline download and skip SSP-A-specific
 //                 validation / pre-fill rules.
 // The mode is also persisted/rehydrated with the saved-session .json.
-function applyCompareModeUI() {
-  const baselineLabel = $('label-baseline');
-  if (!baselineLabel) return;
-  if (state.compareMode === 'ccm-vs-ccm') {
-    baselineLabel.innerHTML =
-      'Previous-quarter CCM — baseline <span class="hint">(.xlsx, required)</span>';
-  } else {
-    baselineLabel.innerHTML =
-      'Product SSP-A — previous-quarter baseline <span class="hint">(.xlsx, required)</span>';
-  }
-  // Hide the Updated SSP-A download button in ccm-vs-ccm mode — there's no
-  // SSP-A to update. The Change Register still works either way.
-  const sspaBtn = $('btn-export-sspa');
-  if (sspaBtn) sspaBtn.style.display = state.compareMode === 'ccm-vs-ccm' ? 'none' : '';
-}
-document.querySelectorAll('input[name="compare-mode"]').forEach(el => {
-  el.addEventListener('change', (e) => {
-    state.compareMode = e.target.value;
-    state.overrideFileTypeCheck = false; // re-validate with new rules
-    applyCompareModeUI();
-    checkReady();
-  });
-});
-applyCompareModeUI();
+// compareMode is always 'ccm-vs-sspa' — toggle removed from UI.
 
 // Override flag — when the user has clicked "Proceed anyway" on a file-type
 // warning, skip the soft swap-detection check for the rest of this session.
@@ -2254,18 +2162,17 @@ $('btn-compute').addEventListener('click', async () => {
   errEl.style.display = 'none';
   warnEl.style.display = 'none';
   $('btn-compute').disabled = true;
-  $('btn-compute').innerHTML = '<span class="spinner"></span>Parsing…';
+  $('btn-compute').innerHTML = '<span class="spinner"></span>Updating…';
 
   try {
     // --- Hard-stop validation ------------------------------------------
     // Mandatory-field errors CANNOT be overridden via "Proceed anyway".
     // They must be fixed. This covers all three product-detail fields and
     // both required file slots (CCM + baseline).
-    const inCcmVsCcm = state.compareMode === 'ccm-vs-ccm';
-    const baselineLabel = inCcmVsCcm ? 'previous-quarter CCM (baseline)' : 'baseline SSP-A';
+    const baselineLabel = 'baseline file';
     const hardErrors = validateProductDetails().map(e => e.msg);
     if (state.bundled.status !== 'ready') hardErrors.push('The bundled CCM and Changes PDF have not loaded yet. If this error persists, check your network connection and reload the page.');
-    if (!state.files.sspa) hardErrors.push(`The ${baselineLabel} (.xlsx) is required. Please upload it before computing a delta.`);
+    if (!state.files.sspa) hardErrors.push('Your SSP-A or CCM (.xlsx) is required. Please upload it before running an update.');
     if (hardErrors.length) {
       $('compute-error').innerHTML =
         '<b>Cannot compute — required inputs are missing:</b><ul style="margin: 8px 0 0 0; padding-left: 18px;">' +
@@ -2303,7 +2210,7 @@ $('btn-compute').addEventListener('click', async () => {
     const sspaWb = await parseXLSX(state.files.sspa);
     const sspaSheets = findReviewSheets(sspaWb);
     if (!sspaSheets.control && !sspaSheets.principle) {
-      throw new Error('SSP-A: no "Controls" or "Principles" sheet found.');
+      throw new Error('Baseline file: no recognisable Controls or Principles sheet found.');
     }
 
     // A kind is only processed if BOTH the CCM and SSP-A have that sheet —
@@ -2315,23 +2222,29 @@ $('btn-compute').addEventListener('click', async () => {
     kinds.forEach(kind => {
       const ccmName  = ccmSheets[kind];
       const sspaName = sspaSheets[kind];
-      if (!ccmName || !sspaName) return;
+      // The CCM sheet is required — no CCM means nothing to diff against.
+      // The baseline sheet is optional: if it's absent, every CCM row is New.
+      if (!ccmName) return;
       const ccmRows  = normaliseRows(ccmWb.Sheets[ccmName]);
-      const sspaRows = normaliseRows(sspaWb.Sheets[sspaName]);
+      const sspaRows = sspaName ? normaliseRows(sspaWb.Sheets[sspaName]) : [];
       const targetQuarter   = quarterFromSheetName(ccmName);
-      const baselineQuarter = quarterFromSheetName(sspaName);
-      kindData[kind] = { ccmSheetName: ccmName, sspaSheetName: sspaName, ccmRows, sspaRows, targetQuarter, baselineQuarter };
+      const baselineQuarter = sspaName ? quarterFromSheetName(sspaName) : '';
+      kindData[kind] = { ccmSheetName: ccmName, sspaSheetName: sspaName || '', ccmRows, sspaRows, targetQuarter, baselineQuarter };
       groups.push({ kind, ccmRows, sspaRows, targetQuarter });
     });
 
-    if (!groups.length) throw new Error('No matching Controls/Principles sheets found in both workbooks.');
+    if (!groups.length) throw new Error('No Controls or Principles sheet found in the bundled CCM.');
 
     // Source of truth for the tool's quarter labels is the first available sheet.
     const primary = kindData.control || kindData.principle;
     state.parsed.targetQuarter   = primary.targetQuarter;
     state.parsed.baselineQuarter = primary.baselineQuarter;
-    if (!state.parsed.targetQuarter)   throw new Error('Could not determine target quarter from CCM sheet name.');
-    if (!state.parsed.baselineQuarter) throw new Error('Could not determine baseline quarter from SSP-A sheet name.');
+
+    // Baseline quarter is display-only — not needed for the delta computation.
+    // If the sheet name doesn't follow the "Controls - Month YYYY" convention,
+    // fall back to "Unknown" so the tool continues rather than hard-stopping.
+    if (!state.parsed.targetQuarter)   throw new Error('Could not determine the current quarter from the bundled CCM sheet name. This is unexpected — please report it.');
+    if (!state.parsed.baselineQuarter) state.parsed.baselineQuarter = 'Unknown';
 
     // Cross-kind quarter consistency check — warn in console but don't block
     kinds.forEach(k => {
@@ -2362,7 +2275,7 @@ $('btn-compute').addEventListener('click', async () => {
     // Compute delta across all groups
     state.delta = computeDelta(groups, { systemClassification: state.product.classification });
     if (state.delta.length === 0) {
-      throw new Error('No differences found between the CCM and the baseline SSP-A. If you expected changes, double-check that you uploaded the right two files for the right quarters.');
+      throw new Error('No differences found between the current CCM and your baseline file. If you expected changes, double-check that you uploaded the correct file for the right quarter.');
     }
     // Compute applicability drift (SSP-A vs CCM) for rows present in both files.
     // This surfaces cases where ASD widened or narrowed classification coverage
@@ -2392,7 +2305,7 @@ $('btn-compute').addEventListener('click', async () => {
       });
     }
 
-    // Analyse the baseline SSP-A at Guideline level: a Guideline is "fully out of scope"
+    // Analyse the baseline file at Guideline level: a Guideline is "fully out of scope"
     // if every control underneath it is marked Not Applicable (in Provider Responsibility
     // or Implementation Status). Applied across BOTH kinds.
     const guidelineCounts = {}; // guideline -> { total, oos }
@@ -2419,26 +2332,6 @@ $('btn-compute').addEventListener('click', async () => {
     // rule chain entirely — the reviewer still decides in/out of scope and
     // triage manually, but we don't pretend we can guess from a non-existent
     // scoping column.
-    if (state.compareMode === 'ccm-vs-ccm') {
-      state.delta.forEach(d => {
-        // prefillInScope + prefillTriage are immutable snapshots of what the
-        // tool suggested (empty in CCM-vs-CCM mode because no SSP-A scoping
-        // exists). The reviewer's editable fields are inScope / triage. The
-        // two pairs are both exported so an auditor can see what the tool
-        // pre-filled vs. what the reviewer chose.
-        state.triage[d.id] = {
-          inScope: '', triage: '', rationale: '', action: '', owner: '',
-          prefillInScope: '', prefillTriage: '', prefillSource: '',
-        };
-      });
-      // Fall through to rendering; skip the usual pre-fill pass.
-      state.validation = crossValidate(state.delta, state.parsed.changesText);
-    state.possiblePairs = findPossibleRescissionPairs(state.delta);
-      renderDashboard();
-      $('step-dashboard').classList.remove('hidden');
-      $('step-dashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
-      return;
-    }
     state.delta.forEach(d => {
       const scoping = d.scoping || {};
       const isInBaseline = !String(scoping.prov || '').startsWith('(not yet');
@@ -2453,12 +2346,15 @@ $('btn-compute').addEventListener('click', async () => {
       //     doesn't apply to this classification is definitively out of scope.
       //   Rule B (guideline-level): if the whole Guideline is Not Applicable in
       //     the baseline, pre-fill No for new/modified controls under it.
-      //   Rule C (row-level): for existing controls, copy the baseline SSP-A's
+      //   Rule C (row-level): for existing controls, copy the baseline file's
       //     scoping — Not Applicable → No; anything else → Yes.
       //   Rule D: brand-new controls with none of the above → leave blank.
+      let classJustification = '';
       if (classMismatch) {
         inScope = 'No';
         prefillSource = 'classification';
+        const lvl = state.product.classification || 'the assessed classification';
+        classJustification = `This control is not applicable to information or information systems classified as ${lvl}. This IRAP assessment is limited to ${lvl} ISM requirements.`;
       } else if (guidelineOos) {
         inScope = 'No';
         prefillSource = 'guideline';
@@ -2480,7 +2376,7 @@ $('btn-compute').addEventListener('click', async () => {
       // a first-class audit artefact. The editable fields (inScope, triage)
       // seed from the same values but may be overwritten by the reviewer.
       state.triage[d.id] = {
-        inScope, triage, rationale: '', action: '', owner: '',
+        inScope, triage, rationale: classJustification, action: '', owner: '',
         prefillInScope: inScope, prefillTriage: triage, prefillSource,
       };
     });
@@ -2492,13 +2388,14 @@ $('btn-compute').addEventListener('click', async () => {
     renderDashboard();
     $('step-dashboard').classList.remove('hidden');
     $('step-dashboard').scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   } catch (err) {
     console.error(err);
     errEl.textContent = 'Error: ' + err.message;
     errEl.style.display = 'block';
   } finally {
     $('btn-compute').disabled = false;
-    $('btn-compute').innerHTML = 'Compute delta →';
+    $('btn-compute').innerHTML = 'Update →';
     checkReady();
   }
 });
@@ -2518,32 +2415,23 @@ function renderMeta() {
   if (p.name) parts.push(`<span>Product: <b>${escapeHtml(p.name)}</b></span>`);
   if (p.classification) parts.push(`<span>Information Classification: <b>${escapeHtml(p.classification)}</b></span>`);
   parts.push(`<span>Target quarter: <b>${quarterLong(pq.targetQuarter)}</b></span>`);
-  parts.push(`<span>Baseline SSP-A: <b>${quarterLong(pq.baselineQuarter)}</b></span>`);
+  parts.push(`<span>Baseline: <b>${quarterLong(pq.baselineQuarter)}</b></span>`);
   parts.push(`<span>Review date: <b>${new Date().toLocaleDateString('en-AU', { day: '2-digit', month: 'short', year: 'numeric' })}</b></span>`);
   $('meta-bar').innerHTML = parts.join('');
 }
 
-// Compute per-kind change + triage counts. Returns both the overall totals
-// and separate breakdowns for Controls and Principles so the stats cards
-// and exports can group them independently.
+// Compute per-kind change counts for the stats cards and exports.
 function counts() {
-  const empty = () => ({
-    total: 0,
-    byChange: { New: 0, Modified: 0, Rescinded: 0 },
-    byTriage: { 'Action Required': 0, 'Monitor': 0, 'No Action': 0, 'Unset': 0 },
-  });
+  const empty = () => ({ total: 0, byChange: { New: 0, Modified: 0, Rescinded: 0 } });
   const byKind = { control: empty(), principle: empty() };
   const overall = empty();
   state.delta.forEach(d => {
     const bucket = byKind[d.kind];
-    if (!bucket) return; // defensive: unknown kind
+    if (!bucket) return;
     bucket.total++;
     bucket.byChange[d.changeType]++;
-    const t = (state.triage[d.id] && state.triage[d.id].triage) || 'Unset';
-    bucket.byTriage[t]++;
     overall.total++;
     overall.byChange[d.changeType]++;
-    overall.byTriage[t]++;
   });
   return { overall, byKind };
 }
@@ -2571,13 +2459,15 @@ function renderCards() {
           <div class="card accent-new"><div class="value">${b.byChange.New}</div><div class="label">New</div></div>
           <div class="card accent-modified"><div class="value">${b.byChange.Modified}</div><div class="label">Modified</div></div>
           <div class="card accent-rescinded"><div class="value">${b.byChange.Rescinded}</div><div class="label">Rescinded</div></div>
-          <div class="card accent-action"><div class="value">${b.byTriage['Action Required']}</div><div class="label">Action required</div></div>
-          <div class="card accent-monitor"><div class="value">${b.byTriage['Monitor']}</div><div class="label">Monitor</div></div>
-          <div class="card accent-none"><div class="value">${b.byTriage['No Action']}</div><div class="label">No action</div></div>
         </div>
       </div>`;
   };
-  $('summary-cards-wrap').innerHTML = kindBlock('Controls', 'control') + kindBlock('Principles', 'principle');
+  // Only render a kind block if the CCM actually contains that sheet.
+  const hasCcmControls   = (state.parsed.byKind.control.ccmRows   || []).length > 0;
+  const hasCcmPrinciples = (state.parsed.byKind.principle.ccmRows || []).length > 0;
+  $('summary-cards-wrap').innerHTML =
+    (hasCcmControls   ? kindBlock('Controls',   'control')   : '') +
+    (hasCcmPrinciples ? kindBlock('Principles', 'principle') : '');
 }
 
 function renderThemes() {
@@ -2599,14 +2489,19 @@ function renderThemes() {
   // on a field the delta wouldn't otherwise surface, not proof of an error.
   const drift = state.drift;
   if (drift) {
+    // Schema migrations (e.g. "All" → "NC") — informational, not action items.
+    if (drift.migrationCount > 0) {
+      html += `<li class="validation-note ok">Column rename (schema migration): ${drift.migrationCount} control(s) had their classification column updated from "All" to "NC" to match the current CCM. The Updated baseline file renames that column header and highlights it in amber.</li>`;
+    }
+    // Genuine applicability drift — ASD actually changed which classifications a control applies to.
     if (drift.count === 0) {
-      html += `<li class="validation-note ok">Applicability drift: no classification-scope differences between the baseline SSP-A and the current CCM for controls present in both files.</li>`;
+      html += `<li class="validation-note ok">Applicability: no genuine classification-scope changes detected.</li>`;
     } else {
       const preview = drift.items.slice(0, 6)
-        .map(it => `<li><code>${escapeHtml(it.id)}</code>: SSP-A <em>${escapeHtml(it.sspa)}</em> → CCM <em>${escapeHtml(it.ccm)}</em></li>`)
+        .map(it => `<li><code>${escapeHtml(it.id)}</code>: baseline <em>${escapeHtml(it.sspa)}</em> → CCM <em>${escapeHtml(it.ccm)}</em></li>`)
         .join('');
       const more = drift.count > 6 ? ` <span class="hint">(${drift.count - 6} more not shown)</span>` : '';
-      html += `<li class="validation-note warn">Applicability drift: ${drift.count} control(s) have different classification applicability between the baseline SSP-A and the current CCM. These won't appear in the delta (the control text is unchanged) but the SSP-A row may need a hand-update.${more}<ul class="drift-list">${preview}</ul></li>`;
+      html += `<li class="validation-note warn">Applicability changes: ASD changed the classification scope of ${drift.count} control(s) in this CCM without changing the control text. These don't appear in the delta — review each and update your baseline file's applicability column manually.${more}<ul class="drift-list">${preview}</ul></li>`;
     }
   }
   // Top Guidelines (Controls only — Principles don't carry a Guideline field)
@@ -2739,7 +2634,7 @@ function guidelineHeaderHtml(guideline, summary, collapsed, kind) {
   // sheets, so the header key is scoped by kind in the dataset.
   const dataKey = `${kind}::${guideline}`;
   return `<tr class="guideline-header${collapsed ? ' collapsed' : ''}" data-key="${escapeHtml(dataKey)}">
-      <td colspan="12">
+      <td colspan="8">
         <span class="guideline-toggle">${caret}</span>
         <span class="guideline-name">${escapeHtml(guideline)}</span>
         <span class="guideline-count">${summary.total} change${summary.total === 1 ? '' : 's'}</span>
@@ -2750,10 +2645,26 @@ function guidelineHeaderHtml(guideline, summary, collapsed, kind) {
 
 function kindSectionHeaderHtml(kind, total) {
   const label = kind === 'control' ? 'Controls' : 'Principles';
-  return `<tr class="kind-header"><td colspan="12">
+  return `<tr class="kind-header"><td colspan="8">
       <span class="kind-label">${label}</span>
       <span class="kind-count">${total} change${total === 1 ? '' : 's'}</span>
     </td></tr>`;
+}
+
+// Slim column sub-header repeated inside each guideline/function group so
+// reviewers don't need to scroll back to the top to identify columns.
+function colSubHeaderHtml(kind) {
+  const isControl = kind === 'control';
+  return `<tr class="col-subheader">
+    <th class="col-id">ID</th>
+    <th class="col-change">Change</th>
+    <th class="col-guideline">${isControl ? 'Guideline' : 'Function'}</th>
+    <th class="col-topic">Topic</th>
+    <th class="col-appl">Applicability</th>
+    <th class="col-text">Old vs. new ISM requirement</th>
+    <th class="col-scoping">Baseline implementation status</th>
+    <th class="col-inscope">Applicable</th>
+  </tr>`;
 }
 
 function renderTable() {
@@ -2809,7 +2720,10 @@ function renderTable() {
       const key = `${kind}::${g}`;
       const collapsed = state.collapsedGuidelines.has(key);
       parts.push(guidelineHeaderHtml(g, summary, collapsed, kind));
-      if (!collapsed) deltas.forEach(d => parts.push(rowHtml(d)));
+      if (!collapsed) {
+        parts.push(colSubHeaderHtml(kind));
+        deltas.forEach(d => parts.push(rowHtml(d)));
+      }
     });
   });
   tbody.innerHTML = parts.join('');
@@ -2818,7 +2732,7 @@ function renderTable() {
   rows.forEach(d => {
     const k = (d.kind === 'principle') ? 'principle' : 'control';
     const key = `${k}::${groupKeyFor(d)}`;
-    if (!state.collapsedGuidelines.has(key)) attachRowHandlers(d.id);
+    // No inline editing — handlers removed (Option A: read-only browser)
   });
 
   // Guideline header click → toggle collapse (scoped by kind::guideline key)
@@ -2869,60 +2783,30 @@ function rowHtml(d) {
       <td class="col-appl">${escapeHtml(d.applicability)}${d.mlLevels !== '-' ? '<br>' + escapeHtml(d.mlLevels) : ''}</td>
       <td class="col-text">
         ${d.changeType === 'New' ? '' : oldHtml}
-        ${d.changeType === 'Rescinded' ? '' : newHtml}
+        ${newHtml}
         ${diffHtml}
       </td>
-      <td class="col-scoping">
-        <div class="scoping-prov">${escapeHtml(d.scoping.prov)}</div>
-        <div class="scoping-stat">${escapeHtml(d.scoping.status)}</div>
-      </td>
-      <td class="col-inscope">
-        <select class="inline-select" data-field="inScope" aria-label="In scope — ${escapeHtml(d.id)}">
-          <option value="">—</option>
-          <option value="Yes" ${t.inScope==='Yes'?'selected':''}>Yes</option>
-          <option value="No"  ${t.inScope==='No'?'selected':''}>No</option>
-        </select>
-      </td>
-      <td class="col-triage">
-        <select class="inline-select ${triageClass}" data-field="triage" aria-label="Triage — ${escapeHtml(d.id)}">
-          <option value="">—</option>
-          <option value="Action Required" ${t.triage==='Action Required'?'selected':''}>Action Required</option>
-          <option value="Monitor" ${t.triage==='Monitor'?'selected':''}>Monitor</option>
-          <option value="No Action" ${t.triage==='No Action'?'selected':''}>No Action</option>
-        </select>
-      </td>
-      <td class="col-action"><textarea class="inline-textarea" data-field="action" placeholder="What needs to happen?" aria-label="Recommended action — ${escapeHtml(d.id)}">${escapeHtml(t.action)}</textarea></td>
-      <td class="col-owner"><textarea class="inline-textarea" data-field="owner" placeholder="Owner / notes" aria-label="Owner or notes — ${escapeHtml(d.id)}">${escapeHtml(t.owner)}</textarea></td>
+      <td class="col-scoping">${(() => {
+        const prov = d.scoping.prov || '';
+        const stat = d.scoping.status || '';
+        // New controls have no baseline scoping — show a single dash rather than
+        // two identical placeholder strings.
+        if (prov === stat && (prov === '' || prov === '(new this quarter)' || prov === '—')) {
+          return `<span style="color:var(--text-muted)">—</span>`;
+        }
+        return `<div class="scoping-prov">${escapeHtml(prov)}</div>${stat && stat !== prov ? `<div class="scoping-stat">${escapeHtml(stat)}</div>` : ''}`;
+      })()}</td>
+      <td class="col-inscope">${t.inScope ? `<span class="chip ${t.inScope === 'Yes' ? 'chip-yes' : 'chip-no'}">${t.inScope}</span>` : '<span style="color:var(--text-muted)">—</span>'}</td>
     </tr>
   `;
 }
 
-function attachRowHandlers(id) {
-  const tr = document.querySelector(`tr[data-id="${id}"]`);
-  if (!tr) return;
-  tr.querySelectorAll('[data-field]').forEach(el => {
-    el.addEventListener('change', (e) => {
-      const field = e.target.dataset.field;
-      state.triage[id][field] = e.target.value;
-      // Re-render just cards & the single select styling
-      renderCards();
-      if (field === 'triage') {
-        e.target.className = 'inline-select ' + (e.target.value ? 'triage-' + (e.target.value === 'Action Required' ? 'action' : (e.target.value === 'Monitor' ? 'monitor' : 'none')) : '');
-      }
-    });
-    if (el.tagName === 'TEXTAREA') {
-      el.addEventListener('input', (e) => {
-        state.triage[id][e.target.dataset.field] = e.target.value;
-      });
-    }
-  });
-}
+// attachRowHandlers removed — browser view is read-only (Option A)
 
 // Filters
-['filter-kind','filter-change','filter-triage','filter-scope'].forEach(id => {
+['filter-kind','filter-change'].forEach(id => {
   $(id).addEventListener('change', (e) => {
-    const key = id.replace('filter-','');
-    state.filters[key] = e.target.value;
+    state.filters[id.replace('filter-','')] = e.target.value;
     renderTable();
   });
 });
@@ -2934,8 +2818,6 @@ $('btn-reset').addEventListener('click', () => {
   state.filters = { change: '', triage: '', scope: '', search: '', kind: '' };
   $('filter-kind').value   = '';
   $('filter-change').value = '';
-  $('filter-triage').value = '';
-  $('filter-scope').value  = '';
   $('filter-search').value = '';
   renderTable();
 });
@@ -3018,24 +2900,6 @@ function wordDiffHtml(oldText, newText) {
 
 // Plain-text version of the same diff, suitable for dropping into a
 // spreadsheet cell. Uses unambiguous markers around inserted/deleted runs.
-function wordDiffPlain(oldText, newText) {
-  const a = tokeniseForDiff(oldText);
-  const b = tokeniseForDiff(newText);
-  const ops = wordDiffTokens(a, b);
-  const out = [];
-  let i = 0;
-  while (i < ops.length) {
-    let j = i;
-    while (j < ops.length && ops[j].op === ops[i].op) j++;
-    const chunk = ops.slice(i, j).map(o => o.token).join('');
-    if (ops[i].op === 'eq') out.push(chunk);
-    else if (ops[i].op === 'ins') out.push(`[+${chunk}+]`);
-    else out.push(`[-${chunk}-]`);
-    i = j;
-  }
-  return out.join('');
-}
-
 /* ---- Exports ---------------------------------------------------------- */
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -3166,7 +3030,7 @@ function exportXlsx() {
     ['Product',                 p.name || ''],
     ['Information Classification', p.classification || ''],
     ['Target quarter',          quarterLong(pq.targetQuarter)],
-    ['Baseline SSP-A',          quarterLong(pq.baselineQuarter)],
+    ['Baseline file',          quarterLong(pq.baselineQuarter)],
     ['Review date',             today],
     ['Product overview',        p.overview || ''],
     [],
@@ -3267,8 +3131,8 @@ function exportXlsx() {
     { key: 'mlLevels',       header: 'Essential 8 Maturity Level',             wch: 22 },
     { key: 'oldText',        header: 'Old Text (baseline)',                    wch: 60 },
     { key: 'newText',        header: 'New Text (current)',                     wch: 60 },
-    { key: 'prov',           header: 'Current SSP-A Provider Responsibility',  wch: 24 },
-    { key: 'status',         header: 'Current SSP-A Implementation Status',    wch: 22 },
+    { key: 'prov',           header: 'Baseline Provider Responsibility',  wch: 24 },
+    { key: 'status',         header: 'Baseline Implementation Status',    wch: 22 },
     { key: 'inScope',        header: 'In Scope (reviewer)',                    wch: 14 },
     { key: 'triage',         header: 'Triage (reviewer)',                      wch: 16 },
     { key: 'action',         header: 'Recommended Action',                     wch: 50 },
@@ -3280,7 +3144,7 @@ function exportXlsx() {
     { key: 'topic',          header: 'Topic',                                  wch: 28 },
     { key: 'oldText',        header: 'Old Text (baseline)',                    wch: 60 },
     { key: 'newText',        header: 'New Text (current)',                     wch: 60 },
-    { key: 'status',         header: 'Current SSP-A Implementation Status',    wch: 22 },
+    { key: 'status',         header: 'Baseline Implementation Status',    wch: 22 },
     { key: 'inScope',        header: 'In Scope (reviewer)',                    wch: 14 },
     { key: 'triage',         header: 'Triage (reviewer)',                      wch: 16 },
     { key: 'action',         header: 'Recommended Action',                     wch: 50 },
@@ -3483,7 +3347,7 @@ function exportXlsx() {
   // The Snapshot above answers "how many", this sheet answers "where". For
   // every E8 control in scope, we emit one row that shows the CCM's ML1/ML2/
   // ML3 claim alongside the matching SSP-A cell values, the SSP-A
-  // Implementation Status, and an "SSP-A corroborates CCM?" column that flags
+  // Implementation Status, and an "Baseline corroborates CCM?" column that flags
   // any row where the SSP-A doesn't back up the CCM's E8 claim. An IRAP
   // assessor can see at a glance which cell in the SSP-A is the evidence for
   // each ML claim, rather than having to trust a count.
@@ -3503,18 +3367,18 @@ function exportXlsx() {
   // costs the reviewer two scroll-clicks before the data. The product name
   // and classification are already on the Summary tab, so they don't need
   // repeating here either. Layout therefore is: explainer → spacer → headers.
-  const evExplainer = 'For every E8 control carrying ML1, ML2 or ML3 in the current CCM, this sheet shows the exact value in the matching SSP-A row. The "SSP-A corroborates?" column flags any row where the SSP-A does not back up the CCM claim — a prompt for the reviewer to either update the SSP-A or adjust scoping.';
+  const evExplainer = 'For every E8 control carrying ML1, ML2 or ML3 in the current CCM, this sheet shows the exact value in the matching baseline row. The "Baseline corroborates?" column flags any row where the baseline does not back up the CCM claim — a prompt for the reviewer to either update the baseline file or adjust scoping.';
   const evRows = [
     [evExplainer],
     [],
     [
       'Identifier', 'Guideline', 'Topic',
-      'CCM ML1', 'SSP-A ML1',
-      'CCM ML2', 'SSP-A ML2',
-      'CCM ML3', 'SSP-A ML3',
-      'SSP-A Implementation Status',
-      'SSP-A Provider Responsibility',
-      'SSP-A corroborates CCM?',
+      'CCM ML1', 'Baseline ML1',
+      'CCM ML2', 'Baseline ML2',
+      'CCM ML3', 'Baseline ML3',
+      'Baseline Implementation Status',
+      'Baseline Provider Responsibility',
+      'Baseline corroborates CCM?',
     ],
   ];
   const evExplainerRow = 0;
@@ -3537,7 +3401,7 @@ function exportXlsx() {
     // Corroboration check — each CCM "Yes" must be matched by a SSP-A "Yes".
     let verdict;
     if (!sspaRow) {
-      verdict = 'Not in baseline SSP-A';
+      verdict = 'Not in baseline file';
       evMissingFromSspa++;
     } else {
       const mismatches = [];
@@ -3545,7 +3409,7 @@ function exportXlsx() {
       if (isYes(ccmML2) && !isYes(sML2)) mismatches.push('ML2');
       if (isYes(ccmML3) && !isYes(sML3)) mismatches.push('ML3');
       if (mismatches.length === 0) verdict = 'Yes';
-      else { verdict = `No — SSP-A silent on ${mismatches.join(', ')}`; evMismatchCount++; }
+      else { verdict = `No — baseline silent on ${mismatches.join(', ')}`; evMismatchCount++; }
     }
     evRows.push([
       id,
@@ -3565,9 +3429,9 @@ function exportXlsx() {
   evRows.push([]);
   evRows.push(['Summary']);
   evRows.push(['Total E8 controls in scope', evRowCount]);
-  evRows.push(['Controls where SSP-A corroborates every CCM ML claim', Math.max(0, evRowCount - evMismatchCount - evMissingFromSspa)]);
-  evRows.push(['Controls where SSP-A is silent on at least one CCM ML claim', evMismatchCount]);
-  evRows.push(['Controls missing from baseline SSP-A entirely', evMissingFromSspa]);
+  evRows.push(['Controls where Baseline corroborates every CCM ML claim', Math.max(0, evRowCount - evMismatchCount - evMissingFromSspa)]);
+  evRows.push(['Controls where baseline is silent on at least one CCM ML claim', evMismatchCount]);
+  evRows.push(['Controls not in baseline file', evMissingFromSspa]);
   const wsEv = XLSX.utils.aoa_to_sheet(evRows);
   wsEv['!cols'] = [
     { wch: 14 }, { wch: 28 }, { wch: 32 },
@@ -3599,22 +3463,22 @@ function exportXlsx() {
   // ---- Methodology sheet ----
   const methRows = [
     ['Step', 'Description'],                              // R0 header
-    ['1. Parse CCM + SSP-A',        'Read the Controls and Principles sheets from both workbooks. Headers are auto-detected (a merged banner row on top is tolerated).'],
-    ['2. Classify each control',    'Set-diff of identifiers between the CCM and the baseline SSP-A. IDs only in the CCM are New. IDs in both are Modified when the description text differs (whitespace-normalised), otherwise they are treated as Unchanged and left verbatim. IDs only in the SSP-A are Rescinded.'],
-    ['3. Cross-validate',           state.validation ? `All ${state.validation.deltaCount} controls in the computed delta appear in the Changes PDF: ${state.validation.onlyInDelta.length === 0 ? 'yes' : 'no — see gaps'}.` : 'Cross-validation result unavailable for this run.'],
-    ['4. Enrich',                   'For each change, pull the old description from the baseline SSP-A and the new description from the current CCM. Attach the baseline SSP-A scoping (Provider Responsibility, Implementation Status) and Essential 8 maturity applicability from the CCM.'],
-    ['5. Guideline-level pre-fill', 'Guidelines where every baseline SSP-A control is "Not Applicable" are treated as fully out of scope. Any new or modified control the current quarter adds under such a Guideline is pre-filled In scope = No, Triage = No Action.'],
+    ['1. Parse both files',         'Read the Controls and Principles sheets from both workbooks. Headers are auto-detected and normalised — org-specific suffixes like "(Company Name)" are stripped before matching canonical column names.'],
+    ['2. Classify each control',    'Set-diff of identifiers between the current CCM and the baseline file. IDs only in the CCM are New. IDs in both are Modified when the requirement description text differs (whitespace-normalised). IDs only in the baseline are Rescinded. Applicability and E8 maturity changes are surfaced separately via the drift check, not as Modified.'],
+    ['3. Cross-validate',           state.validation ? `Cross-validation against the Changes PDF: ${state.validation.onlyInDelta.length === 0 ? 'no gaps found' : `${state.validation.onlyInDelta.length} delta ID(s) not found in PDF — see themes panel`}. The Changes PDF is used where available to enrich rescinded items with explanatory context; the CCM is the source of truth for delta detection.` : 'Changes PDF not available for this run — rescission reasons not enriched.'],
+    ['4. Enrich',                   'For each change, pull the old description from the baseline file and the new description from the current CCM. Attach the baseline file scoping (Provider Responsibility, Implementation Status) and Essential 8 maturity applicability from the CCM.'],
+    ['5. Guideline-level pre-fill', 'Guidelines where every control in the baseline file is "Not Applicable" are treated as fully out of scope. Any new or modified control the current quarter adds under such a Guideline is pre-filled In scope = No, Triage = No Action.'],
     ['6. Row-level pre-fill',       'For controls already in the baseline, pre-fill In scope = No when Provider Responsibility or Implementation Status is "Not Applicable"; pre-fill In scope = Yes otherwise. Modified out-of-scope rows also pre-fill Triage = No Action.'],
     ['7. Reviewer responsibility',  'Pre-fills are a time-saver, not an assessment. The reviewer must read each changed control and confirm or override every pre-fill, rationale, recommended action, and owner before the register is shared.'],
     [],
     ['Input-file requirements'],                          // section head (R9)
-    ['Unprotected xlsx',    'SSP-A and CCM must be plain .xlsx. Password-protected, .xlsm and .xlsb workbooks are not supported.'],
+    ['Unprotected xlsx',    'Both the baseline file and the current-quarter CCM must be plain .xlsx. Password-protected, .xlsm and .xlsb workbooks are not supported.'],
     ['Sensitivity labels',  'Microsoft Purview / AIP / MIP labels prevent the browser parser from reading the file. Remove the label on a working copy before upload; re-apply it on your original after the review. Processing is client-side, so the unlabelled copy never leaves the machine.'],
     [],
     ['Sources'],                                          // section head (R13)
     ['CCM',             'Cloud controls matrix template — ASD / ACSC, current quarter.'],
-    ['Changes PDF',     'ISM <quarter> changes — ASD / ACSC companion document (required).'],
-    ['Baseline SSP-A',  'Product Statement of Applicability, previous quarter.'],
+    ['Changes PDF',     'ISM <quarter> changes — ASD / ACSC companion document (optional). Used to enrich rescinded items with explanatory context. Delta detection proceeds without it.'],
+    ['Baseline file',  'Product Statement of Applicability, previous quarter.'],
   ];
   const wsMeth = XLSX.utils.aoa_to_sheet(methRows);
   wsMeth['!cols'] = [{ wch: 30 }, { wch: 110 }];
@@ -3629,8 +3493,8 @@ function exportXlsx() {
   downloadBlob(blob, fname);
 }
 
-/* ---- Updated SSP-A export --------------------------------------------- */
-// Takes the baseline SSP-A the user uploaded and produces a new .xlsx ready
+/* ---- Updated baseline export --------------------------------------------- */
+// Takes the baseline file the user uploaded and produces a new .xlsx ready
 // to become the next baseline. For each review sheet (Controls + Principles):
 //   - a new leftmost "Change Status" column is inserted with values New /
 //     Updated / Rescinded / No Change
@@ -3647,9 +3511,9 @@ function exportXlsx() {
 // All other sheets pass through unchanged. The Info tab is dropped — its
 // native formatting does not round-trip cleanly through the xlsx library.
 async function exportUpdatedSSPA() {
-  if (!state.files.sspa) { alert('Upload the baseline SSP-A first.'); return; }
+  if (!state.files.sspa) { alert('Upload your SSP-A or CCM first.'); return; }
   if (!state.delta || !state.delta.length) {
-    alert('Compute the delta first (click "Compute delta").'); return;
+    alert('Click Update first to compute the delta.'); return;
   }
 
   // Re-parse the baseline with cellStyles so pass-through sheets keep their
@@ -3657,16 +3521,35 @@ async function exportUpdatedSSPA() {
   const wb = await parseXLSXWithStyles(state.files.sspa);
   const sheets = findReviewSheets(wb);
   if (!sheets.control && !sheets.principle) {
-    alert('Baseline SSP-A has no "Controls" or "Principles" sheet.'); return;
+    alert('Baseline file has no recognisable Controls or Principles sheet.'); return;
   }
 
   const systemClass = (state.product && state.product.classification) || '';
 
   ['control', 'principle'].forEach(kind => {
-    if (!sheets[kind]) return;
     const bundle = state.parsed.byKind[kind];
     if (!bundle || !bundle.ccmRows || !bundle.ccmRows.length) return;
-    updateReviewSheet(wb, sheets[kind], kind, bundle, systemClass);
+
+    if (sheets[kind]) {
+      // Baseline already has this sheet — update in place.
+      updateReviewSheet(wb, sheets[kind], kind, bundle, systemClass);
+    } else if (bundle.ccmSheetName) {
+      // CCM has this kind but baseline doesn't — create a new sheet.
+      // Use the CCM sheet name as the starting point for the new tab.
+      const newSheetName = bundle.ccmSheetName;
+      // Build a minimal AOA from CCM rows so updateReviewSheet has something to work with.
+      // All rows will be treated as New (since sspaRows is empty).
+      const ccmKeys = bundle.ccmRows.length ? Object.keys(bundle.ccmRows[0]) : [];
+      const headerRow = ccmKeys;
+      const dataRows  = bundle.ccmRows.map(r => ccmKeys.map(k => r[k] ?? null));
+      const newWs = XLSX.utils.aoa_to_sheet([headerRow, ...dataRows]);
+      wb.SheetNames.push(newSheetName);
+      wb.Sheets[newSheetName] = newWs;
+      if (wb.Workbook && Array.isArray(wb.Workbook.Sheets)) {
+        wb.Workbook.Sheets.push({ name: newSheetName });
+      }
+      updateReviewSheet(wb, newSheetName, kind, bundle, systemClass, { baselineWasMissing: true });
+    }
   });
 
   // Drop tabs that we can't refresh cleanly:
@@ -3722,23 +3605,23 @@ async function exportUpdatedSSPA() {
 
   const xlsxArray = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
   const blob = new Blob([xlsxArray], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
-  const fname = `${sanitiseFilename(state.product.name)}_SSP-A_${state.parsed.targetQuarter || 'updated'}.xlsx`;
+  const fname = `${sanitiseFilename(state.product.name)}_updated-baseline_${state.parsed.targetQuarter || 'updated'}.xlsx`;
   downloadBlob(blob, fname);
 }
 
-// Find the row index holding the column headers. Real SSP-As commonly have a
-// merged banner row ("ISM Controls") on top; some may not. We scan the first
-// few rows and pick the first one that contains a cell matching "Identifier".
+// Find the row index holding the column headers. Baseline files commonly have
+// a merged banner row on top. Scan the first 8 rows and pick the one where
+// any cell canonicalises to "Identifier" (handles org-specific column suffixes).
 function detectHeaderRow(aoa) {
-  for (let i = 0; i < Math.min(aoa.length, 5); i++) {
-    const row = aoa[i] || [];
-    if (row.some(c => /^\s*identifier\s*$/i.test(String(c || '')))) return i;
+  for (let i = 0; i < Math.min(aoa.length, 8); i++) {
+    if ((aoa[i] || []).some(c => canonicaliseHeader(String(c == null ? '' : c)) === 'Identifier')) return i;
   }
   return 0;
 }
 
 // Rewrite a single review sheet in place inside wb.
-function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
+function updateReviewSheet(wb, sheetName, kind, bundle, systemClass, opts) {
+  const baselineWasMissing = !!(opts && opts.baselineWasMissing);
   const ws = wb.Sheets[sheetName];
   const aoa = XLSX.utils.sheet_to_json(ws, { header: 1, defval: null });
   if (!aoa.length) return;
@@ -3747,25 +3630,43 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
   const baseHeaders = (aoa[hdrRow] || []).map(h => (h == null ? '' : String(h)));
   const dataRows = aoa.slice(hdrRow + 1);
 
-  const normHdr = h => String(h || '').replace(/\s+/g, ' ').trim();
+  // canonicaliseHeader normalises org-specific suffixes so "(Acme Corp)" matches.
+  const normHdr = h => canonicaliseHeader(String(h == null ? '' : h));
   const find = (re) => baseHeaders.findIndex(h => re.test(normHdr(h)));
-  const idCol      = find(/^identifier$/i);
-  const revCol     = find(/^revision$/i);
-  const updCol     = find(/^updated$/i);
-  const descCol    = find(/^description/i);
-  const gdlCol     = find(/^guideline$/i);
-  const provCol    = find(/^provider\s*responsibility$/i);
-  const statCol    = find(/^implementation\s*status$/i);
-  const commentCol = findCommentColumn(baseHeaders);
+
+  // When the file has multiple columns mapping to the same canonical name
+  // (e.g. two "Implementation Status" columns), prefer the one whose RAW
+  // header contains the user-supplied organisation name.
+  const orgName = (($('org-name') && $('org-name').value) || '').trim().toLowerCase();
+  function findWithOrgPref(re) {
+    if (orgName) {
+      const idx = baseHeaders.findIndex(h => re.test(normHdr(h)) && h.toLowerCase().includes(orgName));
+      if (idx !== -1) return idx;
+    }
+    return find(re);
+  }
+
+  const idCol      = find(/^Identifier$/);
+  const revCol     = find(/^Revision$/);
+  const updCol     = find(/^Updated$/);
+  const descCol    = find(/^Description$/);
+  const gdlCol     = find(/^Guideline$/);
+  const provCol    = find(/^Provider Responsibility$/);
+  const statCol    = findWithOrgPref(/^Implementation Status$/);
+  const commentCol = findCommentColumn(baseHeaders, orgName);
   if (idCol === -1)   { console.warn(`[${sheetName}] no "Identifier" column — skipped`); return; }
   if (descCol === -1) { console.warn(`[${sheetName}] no "Description" column — skipped`); return; }
 
-  // Lookup baseline rows by ID
+  // Lookup baseline rows by ID.
+  // When baselineWasMissing the sheet was synthesised from the CCM, so every
+  // row would appear to "exist" — override to empty so all rows are treated as New.
   const baselineById = {};
-  dataRows.forEach(r => {
-    const id = r && r[idCol] != null ? String(r[idCol]).trim() : '';
-    if (id) baselineById[id] = r;
-  });
+  if (!baselineWasMissing) {
+    dataRows.forEach(r => {
+      const id = r && r[idCol] != null ? String(r[idCol]).trim() : '';
+      if (id) baselineById[id] = r;
+    });
+  }
 
   // Seed comments by Guideline for the classification-NA auto-comment.
   const commentsByGuideline = {};
@@ -3829,9 +3730,9 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
         if (provCol !== -1) row[provCol] = 'Not Applicable';
         if (statCol !== -1) row[statCol] = 'Not Applicable';
         if (commentCol !== -1) {
-          const seeded = commentsByGuideline[String(ccmRow['Guideline'] || '').trim()];
-          const generic = `Not applicable — control applies to ${d.classCoverage.coverageList || 'higher'} classifications; system is ${systemClass || 'a lower classification'}.`;
-          row[commentCol] = seeded || generic;
+          const level = systemClass || 'the assessed classification';
+          const justification = `This control is not applicable to information or information systems classified as ${level}. This IRAP assessment is limited to ${level} ISM requirements.`;
+          row[commentCol] = justification;
         }
       }
       newRows.push(row);
@@ -3853,36 +3754,93 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
     statusLabels.push('Rescinded');
   });
 
-  // Assemble final AOA: no banner row; header row first, then data.
-  // Prepend the new "Change Status" column A.
-  const shiftedHeaders = ['Change Status', ...baseHeaders];
-  const shiftedRows    = newRows.map((r, i) => [statusLabels[i], ...r]);
-  const finalAoa = [shiftedHeaders, ...shiftedRows];
-  const newWs = XLSX.utils.aoa_to_sheet(finalAoa);
+  // Schema migration: rename old column labels to match current CCM naming.
+  // E.g., older CCMs used "All" for what is now "NC" (not classified).
+  // We rename these in the output header row and colour those header cells
+  // so the reviewer can see which columns were silently renamed.
+  // Schema migration: rename old column labels to match current CCM naming.
+  // E.g., older CCMs used "All" for what is now "NC" (not classified).
+  // Renamed columns are colour-coded in the header row of the output file.
+  const SCHEMA_HEADER_RENAMES = { 'All': 'NC', 'ALL': 'NC' };
+  const renamedColIndices = new Set();
+  const modernisedHeaders = baseHeaders.map((h, i) => {
+    const trimmed = String(h || '').trim();
+    if (SCHEMA_HEADER_RENAMES[trimmed]) {
+      renamedColIndices.add(i);
+      return SCHEMA_HEADER_RENAMES[trimmed];
+    }
+    return h;
+  });
 
-  // Styling — keep minimal and predictable.
+  // Assemble final AOA: header row first, then data.
+  // "Change Status" is appended as the LAST column so existing column references
+  // and formulas in the baseline file are not broken by a column shift.
+  const statusColIdx = modernisedHeaders.length; // 0-based index of the new last column
+  const finalHeaders = [...modernisedHeaders, 'Change Status'];
+  // Data rows align to modernisedHeaders (same column count as baseHeaders, just renamed)
+  const finalRows    = newRows.map((r, i) => [...r, statusLabels[i]]);
+  const finalAoa     = [finalHeaders, ...finalRows];
+  const newWs        = XLSX.utils.aoa_to_sheet(finalAoa);
+
+  // Cell-level colour coding — only colour cells that actually changed.
+  // Unchanged rows get no styling so they preserve their original look.
+  //   New rows:        full row highlight (every cell is new)
+  //   Modified rows:   only Description, Revision, Updated + Change Status cell
+  //   Rescinded rows:  only Identifier, Description + Change Status cell
+  //   Retained rows:   no styling at all
+  const cellsToColour = new Set(); // stored as "R,C"
+  rowKinds.forEach((kind, rowIdx) => {
+    const R = rowIdx + 1; // +1 for header row
+    if (kind === 'new') {
+      for (let C = 0; C <= statusColIdx; C++) cellsToColour.add(`${R},${C}`);
+    } else if (kind === 'modified') {
+      [descCol, revCol, updCol, statusColIdx].forEach(c => { if (c !== -1) cellsToColour.add(`${R},${c}`); });
+    } else if (kind === 'rescinded') {
+      [idCol, descCol, statusColIdx].forEach(c => { if (c !== -1) cellsToColour.add(`${R},${c}`); });
+    }
+  });
+
   const THIN = { style: 'thin', color: { rgb: 'CFD6E0' } };
-  const baseCell   = { alignment: { horizontal: 'left', vertical: 'top', wrapText: true },
-                       border: { top: THIN, bottom: THIN, left: THIN, right: THIN },
-                       font: { name: 'Calibri', sz: 11 } };
   const headerStyle = { alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
                         border: { top: THIN, bottom: THIN, left: THIN, right: THIN },
                         font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: 'FFFFFF' } },
                         fill: { patternType: 'solid', fgColor: { rgb: '1F3864' } } };
-  const kindFill       = { new: 'D9EAD3', modified: 'FFF2CC', rescinded: 'EEEEEE', retained: null };
-  const statusFillByKind = { new: 'A9D08E', modified: 'FFD966', rescinded: 'BFBFBF', retained: 'F2F2F2' };
+  const kindFill         = { new: 'D9EAD3', modified: 'FFF2CC', rescinded: 'FADADD' };
+  const statusFillByKind = { new: 'A9D08E', modified: 'FFD966', rescinded: 'E06C75' };
 
   const range = XLSX.utils.decode_range(newWs['!ref']);
   for (let R = range.s.r; R <= range.e.r; R++) {
     for (let C = range.s.c; C <= range.e.c; C++) {
       const addr = XLSX.utils.encode_cell({ r: R, c: C });
       if (!newWs[addr]) newWs[addr] = { t: 's', v: '' };
-      if (R === 0) { newWs[addr].s = headerStyle; continue; }
+      if (R === 0) {
+        // Renamed column headers get a distinct amber style so reviewers can see
+        // which columns were modernised (e.g. "All" → "NC").
+        if (renamedColIndices.has(C)) {
+          newWs[addr].s = {
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: { top: THIN, bottom: THIN, left: THIN, right: THIN },
+            font: { name: 'Calibri', sz: 11, bold: true, color: { rgb: '7A4400' } },
+            fill: { patternType: 'solid', fgColor: { rgb: 'FFD966' } },
+          };
+        } else {
+          newWs[addr].s = headerStyle;
+        }
+        continue;
+      }
+      // Apply base alignment to every data cell — left, vertically centred, word-wrapped.
+      // Colour fill is applied only to cells that changed.
+      const baseAlign = { horizontal: 'left', vertical: 'center', wrapText: true };
+      const baseFont  = { name: 'Calibri', sz: 11 };
+      if (!cellsToColour.has(`${R},${C}`)) {
+        newWs[addr].s = { alignment: baseAlign, font: baseFont };
+        continue;
+      }
       const rowKind = rowKinds[R - 1] || 'retained';
-      const style = Object.assign({}, baseCell);
-      if (C === 0) {
+      const style = { alignment: baseAlign, font: { ...baseFont } };
+      if (C === statusColIdx) {
         style.fill = { patternType: 'solid', fgColor: { rgb: statusFillByKind[rowKind] || 'F2F2F2' } };
-        style.font = { name: 'Calibri', sz: 11, bold: true };
+        style.font.bold = true;
         style.alignment = { horizontal: 'center', vertical: 'center', wrapText: true };
       } else {
         const fill = kindFill[rowKind];
@@ -3892,19 +3850,11 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
     }
   }
 
-  // Fresh !cols — a minimal width-only spec for every column. We deliberately
-  // do NOT reuse the baseline's !cols because its min/max attributes reference
-  // pre-shift column positions and Excel treats the resulting XML as invalid
-  // ("Repair: Removed Feature: Column information" warning on open).
-  newWs['!cols'] = shiftedHeaders.map((h, i) => ({
-    wch: i === 0 ? 14 : Math.max(14, Math.min(60, String(h).length + 4)),
+  newWs['!cols'] = finalHeaders.map((h, i) => ({
+    wch: i === statusColIdx ? 14 : Math.max(14, Math.min(60, String(h).length + 4)),
   }));
   newWs['!rows'] = finalAoa.map((_, i) => ({ hpt: i === 0 ? 30 : 60 }));
-  // Note: xlsx-js-style does not write freeze panes or autofilter filter
-  // predicates — we set !autofilter because Excel will still render the
-  // filter dropdown arrows from the name-range, but frozen panes are not
-  // supported by the library and are documented as a known limitation.
-  newWs['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(shiftedHeaders.length - 1)}${finalAoa.length}` };
+  newWs['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(finalHeaders.length - 1)}${finalAoa.length}` };
 
   wb.Sheets[sheetName] = newWs;
 
@@ -3923,9 +3873,16 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass) {
 }
 
 // Find the first column whose header looks like a comment/note column.
-// Priority: Comment > Note > Rationale > Remarks (case-insensitive substring).
-function findCommentColumn(headers) {
+// If orgName is supplied, prefer the column whose header also contains that string
+// (handles files with two Comments columns — one per party).
+function findCommentColumn(headers, orgName) {
   const priorities = [/comment/i, /note/i, /rationale/i, /remark/i];
+  if (orgName) {
+    for (const re of priorities) {
+      const idx = headers.findIndex(h => re.test(String(h || '').trim()) && String(h || '').toLowerCase().includes(orgName));
+      if (idx !== -1) return idx;
+    }
+  }
   for (const re of priorities) {
     const idx = headers.findIndex(h => re.test(String(h || '').trim()));
     if (idx !== -1) return idx;
@@ -3953,305 +3910,6 @@ function parseXLSXWithStyles(file) {
 
 document.getElementById('btn-export-xlsx').addEventListener('click', exportXlsx);
 document.getElementById('btn-export-sspa').addEventListener('click', exportUpdatedSSPA);
-
-/* ---- Word summary export (.docx) ---------------------------------------
-   Generates a leadership-ready Word document using the docx library (loaded
-   via CDN as `window.docx`). The product-overview narrative is intentionally
-   omitted — the Word summary is focused on delta numbers, ID lists, and
-   drift, leaving the narrative blurb to live in the xlsx Summary sheet.
-
-   Layout:
-   - A4 page, 2cm margins. Report-style typography: 11pt Calibri body,
-     larger blue title, section headings at 14pt bold.
-   - Header table (product / target / baseline / review date) as a 2-col grid.
-   - Stats tables split Controls and Principles, one row per change type.
-   - Per-kind ID lists grouped by change type so a reader can scan which
-     controls changed this quarter without opening the xlsx.
-   - Applicability-drift table only when drift data exists (skipped cleanly
-     in ccm-vs-ccm mode, where state.drift is null). */
-
-const DOCX_BLUE = '1F3864';
-const DOCX_BG_HEAD = 'E6EEF8';
-const DOCX_BORDER = 'DFE3EB';
-
-function _docx() {
-  if (!window.docx) {
-    throw new Error('docx.js library not loaded — check network / CDN');
-  }
-  return window.docx;
-}
-
-/* Shorthand builders — keep the main buildDocxSummary() readable. */
-function _dText(text, opts) {
-  const { TextRun } = _docx();
-  return new TextRun(Object.assign({ text: text == null ? '' : String(text) }, opts || {}));
-}
-function _dPara(children, opts) {
-  const { Paragraph } = _docx();
-  return new Paragraph(Object.assign({
-    children: Array.isArray(children) ? children : [children],
-  }, opts || {}));
-}
-function _dHeading(text, level) {
-  const { Paragraph, HeadingLevel, TextRun } = _docx();
-  const sizes = { 1: 32, 2: 26, 3: 22 };
-  const levels = { 1: HeadingLevel.HEADING_1, 2: HeadingLevel.HEADING_2, 3: HeadingLevel.HEADING_3 };
-  return new Paragraph({
-    heading: levels[level],
-    spacing: { before: level === 1 ? 0 : 240, after: 120 },
-    children: [new TextRun({
-      text,
-      bold: true,
-      size: sizes[level],
-      color: DOCX_BLUE,
-      font: 'Calibri',
-    })],
-  });
-}
-function _dCell(children, opts) {
-  const { TableCell, WidthType, BorderStyle } = _docx();
-  const def = {
-    children: Array.isArray(children) ? children : [children],
-    margins: { top: 80, bottom: 80, left: 120, right: 120 },
-  };
-  if (opts && opts.shading) def.shading = opts.shading;
-  if (opts && opts.width)   def.width   = { size: opts.width, type: WidthType.PERCENTAGE };
-  if (opts && opts.colSpan) def.columnSpan = opts.colSpan;
-  return new TableCell(def);
-}
-function _dRow(cells) {
-  const { TableRow } = _docx();
-  return new TableRow({ children: cells });
-}
-function _dTable(rows, widthPct) {
-  const { Table, WidthType, BorderStyle } = _docx();
-  const b = { style: BorderStyle.SINGLE, size: 4, color: DOCX_BORDER };
-  return new Table({
-    rows,
-    width: { size: widthPct || 100, type: WidthType.PERCENTAGE },
-    borders: { top: b, bottom: b, left: b, right: b, insideHorizontal: b, insideVertical: b },
-  });
-}
-
-function buildDocxSummary() {
-  const { Document, Paragraph, TextRun, AlignmentType, PageOrientation } = _docx();
-  const p  = state.product || {};
-  const pq = state.parsed  || {};
-  const c  = counts();
-  const today = new Date().toISOString().slice(0, 10);
-  const controlsDelta   = (state.delta || []).filter(d => d.kind === 'control');
-  const principlesDelta = (state.delta || []).filter(d => d.kind === 'principle');
-  const idsOf = (arr, t) => arr.filter(d => d.changeType === t).map(d => d.id);
-  const baselineLabel = state.compareMode === 'ccm-vs-ccm' ? 'Baseline CCM' : 'Baseline SSP-A';
-
-  const body = [];
-
-  /* Title */
-  body.push(new Paragraph({
-    alignment: AlignmentType.LEFT,
-    spacing: { after: 120 },
-    children: [new TextRun({
-      text: 'ISM Quarterly Change Summary',
-      bold: true,
-      size: 40,
-      color: DOCX_BLUE,
-      font: 'Calibri',
-    })],
-  }));
-  body.push(new Paragraph({
-    spacing: { after: 240 },
-    children: [new TextRun({
-      text: p.name || '(unnamed product)',
-      bold: true, size: 24, color: '1A202C', font: 'Calibri',
-    }), new TextRun({
-      text: p.classification ? `  ·  ${p.classification}` : '',
-      size: 24, color: '5A6A7F', font: 'Calibri',
-    })],
-  }));
-
-  /* Header table — 2-column key/value. */
-  const headShade = { fill: DOCX_BG_HEAD };
-  const headLabelStyle = { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' };
-  const headValueStyle = { size: 20, font: 'Calibri' };
-  const headerRows = [
-    ['Target quarter',   quarterLong(pq.targetQuarter)   || '—'],
-    [baselineLabel,      quarterLong(pq.baselineQuarter) || '—'],
-    ['Review date',      today],
-    ['Comparison mode',  state.compareMode === 'ccm-vs-ccm' ? 'CCM vs CCM' : 'CCM vs SSP-A'],
-  ].map(([k, v]) => _dRow([
-    _dCell(_dPara(_dText(k, headLabelStyle)), { shading: headShade, width: 35 }),
-    _dCell(_dPara(_dText(v, headValueStyle)), { width: 65 }),
-  ]));
-  body.push(_dTable(headerRows));
-  body.push(_dPara(_dText(''), { spacing: { after: 120 } }));
-
-  /* Stats table: Controls + Principles side-by-side totals. */
-  body.push(_dHeading('Change volume', 2));
-
-  const statHead = _dRow([
-    _dCell(_dPara(_dText('Kind',        { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 28 }),
-    _dCell(_dPara(_dText('Total',       { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 18 }),
-    _dCell(_dPara(_dText('New',         { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 18 }),
-    _dCell(_dPara(_dText('Modified',    { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 18 }),
-    _dCell(_dPara(_dText('Rescinded',   { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 18 }),
-  ]);
-  // counts() shape: { overall, byKind: { control|principle: { total, byChange: {New,Modified,Rescinded}, byTriage } } }
-  // Pull numbers through `byChange.*` (not direct properties on `b`) — the
-  // direct-property access was returning `undefined`, which the `_dText`
-  // helper silently rendered as empty cells.
-  const statBody = (label, b) => _dRow([
-    _dCell(_dPara(_dText(label,                 { bold: true, size: 20, font: 'Calibri' }))),
-    _dCell(_dPara(_dText(b.total,               { size: 22, bold: true, color: DOCX_BLUE, font: 'Calibri' }))),
-    _dCell(_dPara(_dText(b.byChange.New,        { size: 20, font: 'Calibri' }))),
-    _dCell(_dPara(_dText(b.byChange.Modified,   { size: 20, font: 'Calibri' }))),
-    _dCell(_dPara(_dText(b.byChange.Rescinded,  { size: 20, font: 'Calibri' }))),
-  ]);
-  body.push(_dTable([
-    statHead,
-    statBody('Controls',   c.byKind.control),
-    statBody('Principles', c.byKind.principle),
-  ]));
-  body.push(_dPara(_dText('')));
-
-  /* Per-kind change tables: one per kind + changeType, listing IDs. */
-  function changeBlock(heading, delta) {
-    body.push(_dHeading(heading, 2));
-    const types = ['New', 'Modified', 'Rescinded'];
-    const rows = [
-      _dRow([
-        _dCell(_dPara(_dText('Change',   { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 18 }),
-        _dCell(_dPara(_dText('Count',    { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 12 }),
-        _dCell(_dPara(_dText('Identifiers', { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 70 }),
-      ]),
-    ];
-    types.forEach(t => {
-      const ids = idsOf(delta, t);
-      rows.push(_dRow([
-        _dCell(_dPara(_dText(t, { bold: true, size: 20, font: 'Calibri' }))),
-        _dCell(_dPara(_dText(ids.length, { size: 20, font: 'Calibri' }))),
-        _dCell(_dPara(_dText(ids.length ? ids.join(', ') : '—', { size: 20, font: 'Calibri' }))),
-      ]));
-    });
-    body.push(_dTable(rows));
-    body.push(_dPara(_dText('')));
-  }
-  changeBlock('Controls — Change Summary',  controlsDelta);
-  changeBlock('Principles — Change Summary', principlesDelta);
-
-  /* Triage snapshot (only if triage data exists). */
-  const triage = state.triage || {};
-  const inScopeYes = (state.delta || []).filter(d => (triage[d.id] || {}).inScope === 'Yes');
-  const inScopeNo  = (state.delta || []).filter(d => (triage[d.id] || {}).inScope === 'No');
-  const notTriaged = (state.delta || []).length - inScopeYes.length - inScopeNo.length;
-  if (inScopeYes.length || inScopeNo.length) {
-    body.push(_dHeading('Triage Summary (Draft)', 2));
-    const tRows = [
-      _dRow([
-        _dCell(_dPara(_dText('Disposition', { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 50 }),
-        _dCell(_dPara(_dText('Count',       { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 50 }),
-      ]),
-      _dRow([
-        _dCell(_dPara(_dText('In scope',        { size: 20, font: 'Calibri' }))),
-        _dCell(_dPara(_dText(inScopeYes.length, { size: 20, font: 'Calibri' }))),
-      ]),
-      _dRow([
-        _dCell(_dPara(_dText('Out of scope',    { size: 20, font: 'Calibri' }))),
-        _dCell(_dPara(_dText(inScopeNo.length,  { size: 20, font: 'Calibri' }))),
-      ]),
-      _dRow([
-        _dCell(_dPara(_dText('Not yet triaged', { size: 20, font: 'Calibri' }))),
-        _dCell(_dPara(_dText(notTriaged,        { size: 20, font: 'Calibri' }))),
-      ]),
-    ];
-    body.push(_dTable(tRows));
-    body.push(_dPara(_dText('')));
-  }
-
-  /* Applicability drift (ccm-vs-sspa mode only — state.drift is null in ccm-vs-ccm). */
-  if (state.drift) {
-    body.push(_dHeading('Applicability drift', 2));
-    if (state.drift.count === 0) {
-      body.push(_dPara(_dText('No classification-scope differences between the baseline and the current CCM.', { size: 20, font: 'Calibri', italics: true, color: '5A6A7F' })));
-    } else {
-      body.push(_dPara(_dText(
-        'Controls where the baseline SSP-A and the current CCM disagree on classification applicability. The control text itself is unchanged — but the SSP-A row likely needs a hand-update on the next review.',
-        { size: 20, font: 'Calibri', color: '5A6A7F' }
-      )));
-      const drows = [_dRow([
-        _dCell(_dPara(_dText('Control',              { bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 20 }),
-        _dCell(_dPara(_dText('Baseline applicability',{ bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 40 }),
-        _dCell(_dPara(_dText('Current applicability',{ bold: true, color: DOCX_BLUE, size: 20, font: 'Calibri' })), { shading: headShade, width: 40 }),
-      ])];
-      state.drift.items.forEach(it => {
-        drows.push(_dRow([
-          _dCell(_dPara(_dText(it.id,   { size: 20, font: 'Calibri', bold: true }))),
-          _dCell(_dPara(_dText(it.sspa, { size: 20, font: 'Calibri' }))),
-          _dCell(_dPara(_dText(it.ccm,  { size: 20, font: 'Calibri' }))),
-        ]));
-      });
-      body.push(_dTable(drows));
-      body.push(_dPara(_dText('')));
-    }
-  }
-
-  body.push(_dPara(_dText(
-    'Generated by the ISM Quarterly Review Tool (built by Gaurav Vikash — https://www.linkedin.com/in/gauravvikash/). © 2026 Gaurav Vikash. Licensed under the Apache Licence 2.0 (https://www.apache.org/licenses/LICENSE-2.0). Redistributions must retain this attribution. For full per-control wording, triage notes and owner assignments, refer to the accompanying Change Register (.xlsx).',
-    { size: 18, italics: true, color: '5A6A7F', font: 'Calibri' }
-  )));
-
-  return new Document({
-    creator: 'Gaurav Vikash — ISM Quarterly Review Tool',
-    title: 'ISM Quarterly Change Summary',
-    subject: 'ASD ISM quarterly delta summary (decision-support artefact)',
-    description: `Quarterly ISM review summary for ${p.name || 'product'}. © 2026 Gaurav Vikash. Licensed under the Apache Licence 2.0.`,
-    lastModifiedBy: 'Gaurav Vikash — ISM Quarterly Review Tool',
-    company: 'Independent — https://www.linkedin.com/in/gauravvikash/',
-    keywords: 'ISM, ACSC, ASD, Cloud Controls Matrix, SSP-A, IRAP, Essential Eight, quarterly review',
-    styles: {
-      default: {
-        document: {
-          run: { font: 'Calibri', size: 22 },
-        },
-      },
-    },
-    sections: [{
-      properties: {
-        page: {
-          size: { orientation: PageOrientation.PORTRAIT },
-          margin: { top: 1134, right: 1134, bottom: 1134, left: 1134 }, // ~2cm
-        },
-      },
-      children: body,
-    }],
-  });
-}
-
-function exportDocxSummary() {
-  try {
-    const { Packer } = _docx();
-    const doc = buildDocxSummary();
-    Packer.toBlob(doc).then(blob => {
-      const p = state.product || {};
-      const pq = state.parsed || {};
-      const safeName = (p.name || 'product').replace(/[^A-Za-z0-9_.-]+/g, '_');
-      const safeQ    = (quarterLong(pq.targetQuarter) || 'quarter').replace(/[^A-Za-z0-9_.-]+/g, '_');
-      const filename = `ISM_Summary_${safeName}_${safeQ}.docx`;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      setTimeout(() => { document.body.removeChild(a); URL.revokeObjectURL(url); }, 0);
-    }).catch(err => {
-      console.error('docx export failed', err);
-      alert('Could not generate the Word summary. Check your network (docx.js is loaded from a CDN) and try again.\n\n' + (err && err.message ? err.message : err));
-    });
-  } catch (err) {
-    console.error('docx export failed', err);
-    alert('Could not generate the Word summary. ' + (err && err.message ? err.message : err));
-  }
-}
 
 /* ---- Stakeholder-communication draft -----------------------------------
    Produces a short plain-English note aimed at non-security stakeholders.
@@ -4313,7 +3971,7 @@ function buildStakeholderNote() {
   }
   if (state.drift && state.drift.count) {
     lines.push('');
-    lines.push(`Note: ${state.drift.count} control(s) have changed applicability (classification scope) in this CCM compared to our baseline — the control text itself is unchanged, but the SSP-A rows will need updating on the next pass.`);
+    lines.push(`Note: ${state.drift.count} control(s) have changed applicability (classification scope) in this CCM compared to our baseline — the control text itself is unchanged, but the baseline file rows may need updating on the next pass.`);
   }
   if (ownerSummary) {
     lines.push('');
@@ -4321,7 +3979,7 @@ function buildStakeholderNote() {
     lines.push(ownerSummary);
   }
   lines.push('');
-  lines.push(`The full change register and updated SSP-A are attached. Happy to walk through any of the items on request.`);
+  lines.push(`The full change register and updated baseline file are attached. Happy to walk through any of the items on request.`);
   lines.push('');
   lines.push(`Thanks,`);
   lines.push(`[Your name]`);
@@ -4358,7 +4016,7 @@ function fallbackCopy(text) {
 }
 
 // Wire the new buttons.
-document.getElementById('btn-word-summary').addEventListener('click', exportDocxSummary);
+// Word summary button removed from UI
 document.getElementById('btn-stakeholder-note').addEventListener('click', openStakeholderNote);
 document.getElementById('btn-close-stakeholder').addEventListener('click', closeStakeholderNote);
 document.getElementById('btn-regenerate-stakeholder').addEventListener('click', () => { $('stakeholder-text').value = buildStakeholderNote(); });
