@@ -259,7 +259,7 @@
 
   /* Table */
   .table-wrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
-  table.register { border-collapse: collapse; width: 100%; font-size: 12.5px; table-layout: auto; }
+  table.register { border-collapse: collapse; width: 100%; font-size: 12.5px; table-layout: fixed; }
   table.register thead { background: var(--primary); color: #fff; position: sticky; top: 0; z-index: 2; }
   /* Header cells wrap on whitespace and break long single words so a long
      column title (e.g. "ISM ID") never overflows into the
@@ -307,7 +307,7 @@
   .col-guideline{ min-width: 120px; width: 12%; font-size: 12px; color: var(--text-muted); }
   .col-topic    { min-width: 120px; width: 13%; }
   .col-appl     { min-width: 80px; width: 80px; font-size: 11px; font-family: monospace; }
-  .col-text     { min-width: 240px; width: 35%; font-size: 12px; }
+  .col-text     { min-width: 320px; width: 40%; font-size: 12px; word-wrap: break-word; overflow-wrap: break-word; }
   .col-text .label-inline { font-size: 10px; color: var(--text-muted); text-transform: uppercase; font-weight: 600; margin-top: 4px; }
   .col-text .label-inline:first-child { margin-top: 0; }
   .col-scoping  { min-width: 110px; width: 11%; font-size: 11.5px; }
@@ -2853,7 +2853,7 @@ $('btn-compute').addEventListener('click', async () => {
         inScope = 'No';
         prefillSource = 'classification';
         const lvl = state.product.classification || 'the assessed classification';
-        classJustification = `This control is not applicable to information or information systems classified as ${lvl}. This IRAP assessment is limited to ${lvl} ISM requirements.`;
+        classJustification = `This control is not applicable to the system classified as ${lvl}.`;
       } else if (guidelineOos) {
         inScope = 'No';
         prefillSource = 'guideline';
@@ -3681,7 +3681,20 @@ function exportXlsx() {
       rows.push(colSpec.map(c => valueByKey[c.key]));
     });
     const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = colSpec.map(c => ({ wch: c.wch }));
+    // Content-aware column widths: measure the widest value in each column
+    // (header included), floor at the declared minimum wch, cap long-text
+    // columns so the sheet stays usable without manual adjustment.
+    const WCH_CAP = { oldText: 90, newText: 90, action: 70, prov: 55, section: 45, guideline: 45, topic: 45 };
+    const DEFAULT_CAP = 50;
+    ws['!cols'] = colSpec.map((c, ci) => {
+      const maxLen = rows.reduce((m, row) => {
+        const cell = row[ci] == null ? '' : String(row[ci]);
+        const longestLine = cell.split('\n').reduce((mx, ln) => Math.max(mx, ln.length), 0);
+        return Math.max(m, longestLine);
+      }, 0);
+      const cap = WCH_CAP[c.key] ?? DEFAULT_CAP;
+      return { wch: Math.min(Math.max(maxLen, c.wch), cap) };
+    });
     // Content-aware row heights. Excel's default (14.4 pt) is too tight for
     // wrapped long cells, which forced reviewers to hand-unwrap rows to
     // see all the text. We estimate the number of wrapped lines for the
@@ -4238,7 +4251,7 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass, opts) {
         if (statCol !== -1) row[statCol] = 'Not Applicable';
         if (commentCol !== -1) {
           const level = systemClass || 'the assessed classification';
-          const justification = `This control is not applicable to information or information systems classified as ${level}. This IRAP assessment is limited to ${level} ISM requirements.`;
+          const justification = `This control is not applicable to the system classified as ${level}.`;
           row[commentCol] = justification;
         }
       }
@@ -4354,9 +4367,10 @@ function updateReviewSheet(wb, sheetName, kind, bundle, systemClass, opts) {
     }
   }
 
-  newWs['!cols'] = finalHeaders.map((h, i) => ({
-    wch: i === statusColIdx ? 14 : Math.max(14, Math.min(60, String(h).length + 4)),
-  }));
+  // Content-aware widths — scan every cell so both headers and values fit.
+  // The Change Status column is narrow by design (it holds short labels like "New").
+  autoFitCols(newWs, { min: 8, max: 80 });
+  if (statusColIdx !== -1 && newWs['!cols'][statusColIdx]) newWs['!cols'][statusColIdx].wch = 14;
   newWs['!rows'] = []; // no fixed heights — Excel auto-fits rows to wrapText content on open
   newWs['!autofilter'] = { ref: `A1:${XLSX.utils.encode_col(finalHeaders.length - 1)}${finalAoa.length}` };
 
@@ -5089,7 +5103,7 @@ function renderGuidelineItem(g, key, container) {
       <label class="sspa-gl-just-label" for="${taId}">
         Justification for excluding this Guideline <span style="font-weight:400;color:var(--text-muted)">(optional — added to each control comment)</span>
       </label>
-      <textarea id="${taId}" placeholder="Explain why ${escHtml(g.name)} is outside the scope of this assessment…" rows="2"></textarea>
+      <textarea id="${taId}" placeholder="Describe why this system does not implement ${escHtml(g.name)} — e.g. no mobile devices, no on-premises infrastructure…" rows="2"></textarea>
     </div>`;
 
   const cb   = item.querySelector(`#${cbId}`);
@@ -5127,9 +5141,25 @@ const IMPL_STATUS_COLOURS = {
   'Not Assessed':           'FFFFFF',  // white  — blank template default
 };
 
-// Column widths from the ASD SSP-A template XML (Excel character units)
-const CONTROLS_COL_WIDTHS  = [38.66,38.66,38.66, 11.33,11.33,11.33, 6.66,6.66,6.66,6.66,6.66,6.66,6.66,6.66, 75, 33.33,33.33, 75];
-const PRINCIPLES_COL_WIDTHS = [14, 14, 32, 75, 28, 28, 65];
+// Auto-fit column widths by scanning every cell in the sheet.
+// min: floor in chars (so short columns like "NC" stay usable).
+// max: ceiling so long-text columns don't become unreadably wide.
+function autoFitCols(ws, { min = 6, max = 80 } = {}) {
+  const range = XLSX.utils.decode_range(ws['!ref'] || 'A1');
+  const widths = [];
+  for (let C = range.s.c; C <= range.e.c; C++) {
+    let w = min;
+    for (let R = range.s.r; R <= range.e.r; R++) {
+      const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+      if (!cell || cell.v == null) continue;
+      const longest = String(cell.v).split('\n')
+        .reduce((m, l) => Math.max(m, l.length), 0);
+      w = Math.max(w, longest);
+    }
+    widths.push({ wch: Math.min(w + 1, max) }); // +1 gives a small breathing margin
+  }
+  ws['!cols'] = widths;
+}
 
 // ---- Helper: find Principles sheet (content-based) -----------------------
 function findSSPAPrinciplesSheet(wb) {
@@ -5292,9 +5322,9 @@ function generateSSPA() {
 
       let commentValue;
       if (isClassNA) {
-        commentValue = `This control is not applicable to ${classDisplay} systems. This IRAP assessment is limited to ${classDisplay} ISM requirements.`;
+        commentValue = `This control is not applicable to the system classified as ${classDisplay}.`;
       } else {
-        const std    = `This control is not applicable as ${guidelineName} is outside the scope of this IRAP assessment.`;
+        const std    = `This system does not implement ${guidelineName}. This control is not applicable to the assessed system's architecture and operating environment.`;
         const custom = (gState && gState.justification) ? gState.justification : '';
         commentValue = (!custom || custom.includes(std)) ? (custom || std) : std + ' ' + custom;
       }
@@ -5323,8 +5353,8 @@ function generateSSPA() {
     // Styles are assigned explicitly — no reliance on the cellStyles read round-trip.
     styleSSPAEditableColumns(ws, respColIdx, implColIdx, commColIdx, hdrIdx);
 
-    // Explicit column widths (matching original template XML values).
-    ws['!cols'] = CONTROLS_COL_WIDTHS.map(w => ({ wch: w }));
+    // Content-aware column widths — scan every cell so headers and values both fit.
+    autoFitCols(ws, { min: 6, max: 80 });
 
     // No fixed row heights — rows auto-fit based on wrapText content when
     // opened in Excel. customHeight="1" would prevent auto-fit; leaving !rows
@@ -5350,7 +5380,7 @@ function generateSSPA() {
       });
       renameSSPAHeader(wsp, pHdr, 'Implementation', 'Implementation Status');
       styleSSPAEditableColumns(wsp, pRespIdx, pImplIdx, pCommIdx, pHdr);
-      wsp['!cols'] = PRINCIPLES_COL_WIDTHS.map(w => ({ wch: w }));
+      autoFitCols(wsp, { min: 6, max: 80 });
       wsp['!rows'] = []; // auto-fit, same as Controls sheet
     }
 
